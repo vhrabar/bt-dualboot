@@ -37,8 +37,6 @@ def extract_info(device_info_path):
     ediv = config.get("LongTermKey", "EDiv", fallback=None)
     rand = config.get("LongTermKey", "Rand", fallback=None)
 
-    if not link_key and not long_term_key:
-        raise KeyError("Neither LinkKey->Key nor LongTermKey->Key exist")
     # fmt: off
     return {
         "name":         config.get("General", "Name"),
