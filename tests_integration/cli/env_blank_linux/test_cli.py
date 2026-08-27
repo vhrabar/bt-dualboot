@@ -1,3 +1,4 @@
+import pytest
 from bt_dualboot import APP_NAME, __version__
 from tests_integration.helpers import snapshot_cli_result, debug_shell
 from operator import itemgetter
@@ -8,11 +9,12 @@ def snapshot_cli(*args, **kwrd):
     return snapshot_cli_result(*args, context=context, **kwrd)
 
 
-def manual_test_initial(debug_shell):
+@pytest.mark.manual
+def test_initial(debug_shell):
     """
     Spawn shell in context with having prepared Linux & Windows bluetooth configs
     invoke using:
-        pytest -c manual_pytest.ini
+        dev/start-tests-manual  (or: pytest -m manual)
     """
     with debug_shell():
         print("It's initial state with prepared Linux & Windows bluetooth configs")

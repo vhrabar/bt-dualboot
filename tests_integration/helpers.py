@@ -1,12 +1,10 @@
 import os
 import subprocess
 import sys
-from pathlib import Path
 from contextlib import contextmanager
 from operator import itemgetter
 
 from pytest import fixture
-from bt_dualboot import APP_NAME
 
 
 @fixture(scope="session")
@@ -50,18 +48,6 @@ def debug_shell(request):
     return runner
 
 
-def cli_name():
-    return APP_NAME
-
-
-def project_root():
-    """
-    Returns:
-        str: project's root irrelative to current directory
-    """
-    return Path(__file__).parent.parent
-
-
 def cli_result(cmd_opts, sudo=False, fake_time=None, launcher=None):
     """
     Invokes cli with given comand line options
@@ -74,7 +60,7 @@ def cli_result(cmd_opts, sudo=False, fake_time=None, launcher=None):
             @see details:
                 https://github.com/wolfcw/libfaketime
                 https://github.com/simon-weber/python-libfaketime
-        launcher (str|list): [default: "./bt-dualboot"] way to launch application
+        launcher (str|list): [default: [sys.executable, "-m", "bt_dualboot"]] way to launch application
             overrides PYTEST_CLI_CMD=
             examples:
                 "bt-dualboot"
@@ -98,7 +84,7 @@ def cli_result(cmd_opts, sudo=False, fake_time=None, launcher=None):
         cli_cmd = os.environ.get("PYTEST_CLI_CMD")
 
     if cli_cmd is None:
-        cli_cmd = os.path.join(project_root(), cli_name())
+        cli_cmd = [sys.executable, "-m", "bt_dualboot"]
 
     if isinstance(cli_cmd, str):
         cli_cmd = [ cli_cmd ]
@@ -106,7 +92,9 @@ def cli_result(cmd_opts, sudo=False, fake_time=None, launcher=None):
     cmd = [*cli_cmd, *cmd_opts]
 
     if fake_time is not None:
-        cmd = f"eval $(python-libfaketime); FAKETIME='{fake_time}' {' '.join(cmd)}"
+        # NOTE: absolute path, since `sudo`'s secure_path strips the venv's bin dir from PATH
+        python_libfaketime = os.path.join(os.path.dirname(sys.executable), "python-libfaketime")
+        cmd = f"eval $({python_libfaketime}); FAKETIME='{fake_time}' {' '.join(cmd)}"
         cmd = ["sh", "-c", cmd]
 
     if sudo is True:
@@ -148,10 +136,12 @@ def snapshot_cli_result(snapshot_tool, cmd_opts, sudo=False, context=None, **kwr
             cmd (str): invoked command
     """
     res = cli_result(cmd_opts, sudo, **kwrd)
-    retcode, stdout, stderr, cmd = itemgetter("retcode", "stdout", "stderr", "cmd")(res)
+    retcode, stdout, stderr = itemgetter("retcode", "stdout", "stderr")(res)
 
+    # NOTE: the invoked command (`res["cmd"]`) is intentionally left out of the
+    # snapshot - it carries absolute, environment-specific paths (venv bin,
+    # libfaketime) that differ per machine and are never asserted.
     output = [
-        f"CMD: {' '.join(cmd)}",
         f"RETCODE={retcode}",
         "STDOUT:\n=======",
         stdout,

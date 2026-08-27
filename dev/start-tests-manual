@@ -2,4 +2,4 @@
 
 [ -z "$ONLY_ENV" ] && ONLY_ENV=env_single_windows
 
-ONLY_ENV=$ONLY_ENV dev/start-tests-integration -c manual_pytest.ini "$@"
+ONLY_ENV=$ONLY_ENV dev/start-tests-integration -m manual "$@"

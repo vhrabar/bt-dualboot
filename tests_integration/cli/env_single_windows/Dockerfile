@@ -4,6 +4,6 @@ FROM $ARG_REQUIRED_IMAGE
 ARG ARG_USER
 
 # pre-build dependencies
-COPY ./dev/bootstrap ./pyproject.toml ./poetry.lock   /src/
+COPY ./dev/bootstrap ./pyproject.toml ./uv.lock   /src/
 RUN /docker/prebuild-dependencies $ARG_USER /src
 

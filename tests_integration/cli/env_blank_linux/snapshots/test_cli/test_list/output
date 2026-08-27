@@ -1,5 +1,4 @@
 CONTEXT: [env_blank_linux] chntpw not installed, windows not mounted
-CMD: /src/bt-dualboot -l
 RETCODE=1
 STDOUT:
 =======

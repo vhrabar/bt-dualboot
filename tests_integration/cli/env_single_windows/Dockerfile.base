@@ -4,11 +4,15 @@ FROM python:$ARG_PYTHON_VERSION
 COPY ./docker /docker/
 ARG ARG_UID ARG_USER
 RUN /docker/add-user $ARG_UID $ARG_USER \
-  && apt install chntpw \
+  && apt install -y chntpw \
   && chmod o+x /docker/*
 
 COPY ./tests/bt_linux/data_samples/bt_sample_01/          /var/lib/bluetooth/
 COPY ./tests/windows_registry/data_samples/SYSTEM_BLANK   /mnt/win/Windows/System32/config/SYSTEM
+
+# NOTE: mirror real bluetoothd permissions (root-only), regardless of the host checkout's
+#       file modes (git doesn't track them) - this is what makes `-l` require sudo
+RUN chmod -R go-rwx /var/lib/bluetooth
 
 USER $ARG_USER
 
@@ -16,5 +20,5 @@ RUN sudo chmod -R uo+rw /mnt/win/Windows/System32/config \
   && echo 'PATH=/usr/sbin:$PATH' > /home/$ARG_USER/.bashrc \
   # since test app invoked with sudo we have to setup faketime for system-wide environment too
   && sudo pip install libfaketime \
-  && curl -sSL https://install.python-poetry.org | python3 -
+  && curl -LsSf https://astral.sh/uv/install.sh | sh
 

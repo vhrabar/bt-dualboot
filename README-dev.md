@@ -5,19 +5,16 @@ bt-dualboot: Development Guide
 
  * [pyenv](https://github.com/pyenv/pyenv#getting-pyenv) with locked Python version by `.python-version` (every testing/deployment tool should respect this version)
  * [docker engine](https://docs.docker.com/engine/install/)
- * [poetry](https://python-poetry.org/docs/#installation) (installed automatically by `dev/bootstrap`)
+ * [uv](https://docs.astral.sh/uv/getting-started/installation/) (installed automatically by `dev/bootstrap`)
 
 
 ### Bootstrap
 
 ```console
-$ git clone git@github.com:x2es/bt-dualboot.git \
+$ git clone git@github.com:vhrabar/bt-dualboot.git \
     && cd bt-dualboot \
     && dev/bootstrap
 ```
-
-**NOTE**: `dev/bootstrap` will install poetry unless exist, checkout script code
-
 
 ### Usage
 
@@ -275,23 +272,24 @@ Allows reuse testing environments and tests setup scenarious spawning shell insi
 
 See content of `dev/start-tests-manual` for details.
 
-It uses separate pytest configuration defining as a tests target a methods named like `def manual_test_*`.
+It relies on a `manual` pytest marker (registered in `pyproject.toml`) instead of a separate test target.
 
 Example
 
 ```python
-def manual_test_initial(debug_shell):
+@pytest.mark.manual
+def test_initial(debug_shell):
     """
     Spawn shell in context with having prepared Linux & Windows bluetooth configs
     invoke using:
-        pytest -c manual_pytest.ini
+        dev/start-tests-manual  (or: pytest -m manual)
     """
     with debug_shell():
         print("It's initial state with prepared Linux & Windows bluetooth configs")
         print(f"Command-line tip:\n  sudo ./bt-dualboot {' '.join(with_win([]))} ...")
 ```
 
-`manual_test_*` willn't be invoked during regular tests run.
+`pyproject.toml` sets `addopts = "-m 'not manual'"`, so `@pytest.mark.manual` tests won't be invoked during a regular tests run; passing `-m manual` (as `dev/start-tests-manual` does) overrides that and selects only them.
 
 
 ### `dev/pre-release-all`: ensure current working copy ready to release
@@ -317,17 +315,17 @@ Current approach is lint code:
 
 ## Publish to pypi repository
 
-Building and publishing application package handled completely by poetry. This way main concern is to maintain `pyproject.toml`.
+Building and publishing application package handled completely by uv. This way main concern is to maintain `pyproject.toml`.
 
 ```console
-$ poetry publish
+$ uv build
+$ uv publish
 ```
 
 ### TIPS for staging pypi repository
 
 ```console
-$ poetry config --unset repositories.local && poetry config repositories.local http://localhost:3141/user/private
-$ poetry publish -r local -u user -p userpass
+$ uv publish --publish-url http://localhost:3141/user/private -u user -p userpass
 ```
 
 ## TIPS

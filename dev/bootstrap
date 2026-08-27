@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 
-which poetry || curl -sSL https://install.python-poetry.org | python3 -
-poetry install
+which uv || curl -LsSf https://astral.sh/uv/install.sh | sh
+uv sync "$@"

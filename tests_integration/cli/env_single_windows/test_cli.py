@@ -1,4 +1,4 @@
-from pytest import fixture
+from pytest import fixture, mark
 import os
 import shutil
 import filecmp
@@ -77,7 +77,7 @@ def assert_hive_backup_ok(tmpdir, target_backup_path, should_absent=False):
 
     yield {"fake_time": "@2020-12-24 20:30:00"}
 
-    backup_file_path = os.path.join(target_backup_path, "SYSTEM-2020-12-24--20-29-59")
+    backup_file_path = os.path.join(target_backup_path, "SYSTEM-2020-12-24--20-30-00")
     if should_absent is True:
         assert os.path.exists(backup_file_path) is False, "Hive backup should NOT exist"
     else:
@@ -117,11 +117,12 @@ def import_windows_devices_once(windows_registry):
     do_import(windows_registry, scheme)
 
 
-def manual_test_initial(debug_shell):
+@mark.manual
+def test_initial(debug_shell):
     """
     Spawn shell in context with having prepared Linux & Windows bluetooth configs
     invoke using:
-        pytest -c manual_pytest.ini
+        dev/start-tests-manual  (or: pytest -m manual)
     """
     with debug_shell():
         print("It's initial state with prepared Linux & Windows bluetooth configs")

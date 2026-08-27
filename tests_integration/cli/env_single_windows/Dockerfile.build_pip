@@ -14,8 +14,8 @@ RUN sudo chown -R $ARG_USER /prj && cd /prj \
 RUN cd /prj \
   && /docker/devpi-bootstrap \
   # Setup and publish pypi package, then pip install it
-  && poetry config repositories.test http://localhost:3141/root/test \
-  && poetry publish --build -r test -u root -p topsecret \
+  && uv build \
+  && uv publish --publish-url http://localhost:3141/root/test -u root -p topsecret \
   && sudo pip install -i http://localhost:3141/root/test bt-dualboot \
   && /docker/devpi-stop \
   # avoid false-positive tests

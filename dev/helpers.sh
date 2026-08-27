@@ -7,7 +7,7 @@
 #
 # Try:
 #   * PATH
-#   * poetry run $executable
+#   * uv run $executable
 #
 # @param {str} executable
 #
@@ -22,9 +22,9 @@ resolve_cmd() {
     return
   fi
 
-  if [ ! -z "$(which poetry)" ]; then
-    if [ ! -z "$(poetry run which $executable)" ]; then
-      echo "poetry run $executable"
+  if [ ! -z "$(which uv)" ]; then
+    if [ ! -z "$(uv run which $executable)" ]; then
+      echo "uv run $executable"
       return
     fi
   fi

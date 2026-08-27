@@ -1,5 +1,4 @@
 CONTEXT: [env_blank_linux] chntpw not installed, windows not mounted
-CMD: /src/bt-dualboot
 RETCODE=1
 STDOUT:
 =======
@@ -9,7 +8,7 @@ usage: bt-dualboot [-h] [--version] [-l] [--list-win-mounts] [--bot]
 
 Sync bluetooth keys from Linux to Windows (v1.0.1)
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   --version             print version
 

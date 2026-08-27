@@ -2,32 +2,32 @@
 Sync Bluetooth for dualboot Linux and Windows
 =============================================
 
-User-friendly tool making your bluetooth devices working both in Windows and Linux without re-pairing chore.
-  [more about dualboot Bluetooth issue](#dualboot-bluetooth-issue)
+User-friendly tool that makes your Bluetooth devices work in both Windows and Linux without the re-pairing chore.
+  [more about the dualboot Bluetooth issue](#dualboot-bluetooth-issue)
 
 ### bt-dualboot
-  * doesn't require to reboot 3 times
-  * ask you as much fewer details as possible
+  * doesn't require rebooting 3 times
+  * asks you for as few details as possible
   * ... [see all advantages and alternatives](#advantages-and-alternatives)
 
 [How to install](#prerequisites)
 
-**For developers**: checkout the [Developer insights](README-dev.md) for useful development and testings tips.
+**For developers**: check out the [Developer insights](README-dev.md) for useful development and testing tips.
 
 ### Usage: shortest way
 
-Assuming you have paired devices in Windows already, boot to Linux and paired them too.
-Syncing would be simple as following 2 steps:
+Assuming you already have paired devices in Windows, boot to Linux and pair them there too.
+Syncing is then as simple as the following 2 steps:
 
-**1. Mount Windows partition**
+**1. Mount the Windows partition**
 
-Application will probe and use mounted Windows partition automatically. Otherwise use [--win /mnt/win/path/](#--win-mntwinpath).
-Partition should be mounted with [write access](#troubleshooting-windows-partition-write-access).
+The application probes and uses the mounted Windows partition automatically. Otherwise use [--win /mnt/win/path/](#--win-mntwinpath).
+The partition must be mounted with [write access](#troubleshooting-windows-partition-write-access).
 
 **2. Sync all devices available for sync**
 
 ```console
-$ sudo bt-dualboot --sync-all
+$ sudo uvx --from bt-dualboot-sync bt-dualboot --sync-all
 
 Syncing...
 ==========
@@ -37,16 +37,16 @@ Syncing...
 ```
 
 NOTES:
-  (i) **sudo** tip: this tool needs read-only access to bluetooth devices configuration files which is inaccessible for regular user.
+  (i) **sudo** tip: this tool needs read-only access to Bluetooth device configuration files, which are inaccessible to a regular user. Make sure `uvx` is reachable by root (install uv system-wide, or use `sudo env "PATH=$PATH" uvx ...`).
   (ii) [--backup vs --no-backup](#--backup-vs---no-backup): you will be asked about your Windows Registry backup strategy
-  (iii) use `--dry-run` to preview any command effects
+  (iii) use `--dry-run` to preview the effects of any command
 
-### Usage: choose device manually
+### Usage: choose the device manually
 
-1. List devices info
+1. List device info
 
 ```console
-$ sudo bt-dualboot -l
+$ sudo uvx --from bt-dualboot-sync bt-dualboot -l
 
 Works both in Linux and Windows
 ===============================
@@ -55,24 +55,24 @@ Works both in Linux and Windows
 Needs sync
 ==========
 
-Following devices available for sync with `--sync-all` or `--sync MAC` options.
+The following devices are available for sync with the `--sync-all` or `--sync MAC` options.
 
  [C2:9E:1D:E2:3D:A5] Keyboard K380
 
 Have to be paired in Windows
 ============================
 
-Following devices unavailable for sync unless you boot Windows and pair them
+The following devices are unavailable for sync unless you boot Windows and pair them:
 
  [E9:1D:FE:2A:C3:C8] JBL GO
 
 ```
 
 
-2. Sync devices using MAC
+2. Sync devices using their MAC
 
 ```console
-$ sudo bt-dualboot --sync C2:9E:1D:E2:3D:A5
+$ sudo uvx --from bt-dualboot-sync bt-dualboot --sync C2:9E:1D:E2:3D:A5
 
 Syncing...
 ==========
@@ -81,11 +81,11 @@ Syncing...
 
 ```
 
-See [`bt-dualboot -h`](#cli-reference) and chapters below for details.
+See [`bt-dualboot -h`](#cli-reference) and the chapters below for details.
 
 ## Prerequisites 
 
-* Python 3.6+ installed.
+* [uv](https://docs.astral.sh/uv/) installed — it fetches Python and the tool on demand.
 
 * `chntpw` package installed:
 
@@ -99,34 +99,42 @@ see https://pogostick.net/~pnh/ntpasswd/
 
 ## Install
 
+No install step is needed — run it straight from PyPI with `uvx`:
+
 ```console
-$ sudo pip install bt-dualboot
+$ uvx --from bt-dualboot-sync bt-dualboot --help
 ```
 
-NOTES: **sudo** - application requires read-only access to bluetooth devices configuration files which is inaccessible for regular user. Native OS packages will be added in next releases.
+For a persistent `bt-dualboot` command:
+
+```console
+$ uv tool install bt-dualboot-sync
+```
+
+NOTES: **sudo** — `--sync*` and `-l` require read-only access to Bluetooth device configuration files, which are inaccessible to a regular user, so run those under `sudo` (see the sudo tip above). Native OS packages will be added in a future release.
 
 ### Supported OS
 
-Tested with Linux Mint 19.3, 20.3 (Ubutntu 18.04 bionic, 20.04 focal), Windows 10
+Tested with Linux Mint 19.3, 20.3 (Ubuntu 18.04 bionic, 20.04 focal) and Windows 10.
 
 Supported: 
 
-* Potentially any Linux-based systems keeping bluetooth configuration in similar format as Ubuntu
+* Potentially any Linux-based system that keeps its Bluetooth configuration in a similar format to Ubuntu
 * Windows 10+
 
-With next releases more OSes will be tested, Mac OS support will be added. If you get success or fail results for any OS not listed as supported, please share your experience at https://github.com/x2es/bt-dualboot/issues/1.
+More OSes will be tested in future releases, and Mac OS support will be added. If you get a success or failure result for any OS not listed as supported, please share your experience at https://github.com/x2es/bt-dualboot/issues/1.
 
 
 ## Advanced usage
 
 ### --backup vs --no-backup
 
-Windows Registry update performed in the safe way using `chntpw/reged` without changing Hive-file's size (`reged -N -E`). Nevertheless `chntpw` is non-official tool hence backup is not bad idea. Application would perform it as you prefer.
+The Windows Registry update is performed in a safe way using `chntpw/reged` without changing the Hive file's size (`reged -N -E`). Nevertheless, `chntpw` is an unofficial tool, so a backup is not a bad idea. The application performs it however you prefer.
 
 You have to choose your backup strategy explicitly.
 
 ```console
-$ sudo bt-dualboot --sync-all 
+$ sudo uvx --from bt-dualboot-sync bt-dualboot --sync-all 
 usage: ....
 bt-dualboot: error: Neither backup option given!
 
@@ -146,24 +154,24 @@ bt-dualboot: error: Neither backup option given!
 
 ### --win /mnt/win/path/
 
-By default application will recognize and use mounted Windows partition. In case when it didn't found or more than single Windows partition exist you have to provide mount point with `--win` paramter.
+By default the application recognizes and uses the mounted Windows partition. If it isn't found, or more than one Windows partition exists, you have to provide the mount point with the `--win` parameter.
 
-Use `--list-win-mounts` to list recognized Windows partitions.
+Use `--list-win-mounts` to list the recognized Windows partitions.
 
 ```console
-$ bt-dualboot --lsit-win-mounts
+$ uvx --from bt-dualboot-sync bt-dualboot --list-win-mounts
 
 Windows locations:
 ==================
  /media/user/win_foo
  /media/user/win_bar
  
-$ sudo bt-dualboot --win /media/user/win_foo -l
+$ sudo uvx --from bt-dualboot-sync bt-dualboot --win /media/user/win_foo -l
 ```
 
 #### Troubleshooting: Windows partition write access
 
-In case when Windows partition mounted in read-only mode, you have to remount it for read-write:
+If the Windows partition is mounted read-only, you have to remount it read-write:
 
 ```console
 $ sudo mount -o remount,rw /mnt/win/path
@@ -171,67 +179,36 @@ $ sudo mount -o remount,rw /mnt/win/path
 
 ### Machine processing
 
-`--bot` flag enables better parsable output for usage in scripts.
+The `--bot` flag enables more parsable output for use in scripts.
 
 
 ## Dualboot Bluetooth issue
 
-Every time when a Bluetooth device paired in one dualboot OS it stop working in another one. It happens because both OS uses the same Bluetooth adapter with the same MAC. Each pairing process generates new pairing keys for adapter's MAC. This way previous pairing key which saved in another OS becomes obsolete.
+Every time a Bluetooth device is paired in one dualboot OS, it stops working in the other. This happens because both OSes use the same Bluetooth adapter with the same MAC. Each pairing process generates new pairing keys for the adapter's MAC, so the previous pairing key saved in the other OS becomes obsolete.
 
-The solution is to sync saved pairing keys for both OS. This answer describes ways to handle this manually: https://unix.stackexchange.com/a/255510/411221
+The solution is to sync the saved pairing keys between both OSes. This answer describes how to do it manually: https://unix.stackexchange.com/a/255510/411221
 
-This application implements the way suggested by the [comment](https://unix.stackexchange.com/questions/255509/bluetooth-pairing-on-dual-boot-of-windows-linux-mint-ubuntu-stop-having-to-p#comment545967_255510) which copies pairng keys directly from Linux to Windows avoiding multiple reboots.
+This application implements the approach suggested in this [comment](https://unix.stackexchange.com/questions/255509/bluetooth-pairing-on-dual-boot-of-windows-linux-mint-ubuntu-stop-having-to-p#comment545967_255510), which copies pairing keys directly from Linux to Windows, avoiding multiple reboots.
 
 
 ## Advantages and alternatives
 
 **bt-dualboot**:
 
-* doesn't require to reboot multiple times
+* doesn't require rebooting multiple times
 * [simple install](#prerequisites)
-* provides single [simple cli](#cli-reference), doesn't require invoke additional scripts
-* discower mounted Windows partition automatically
-* safe update of Windows Registry without changing file size (rewrite only)
-* [backup Windows Registry](#--backup-vs---no-backup) prior update
-* doesn't require import/export files, handle encoding issues
-* allows `--dry-run` prior actual changes
-
-### alternatives
-
-checkout ["bluetooth dualboot" on github](https://github.com/search?q=bluetooth+dualboot&type=repositories)
-
-**solved by invoke single tool under Linux: sync keys from Linux into Windows registry**: 
-
-(similar approach to bt-dualboot)
-
-* (anounced) https://github.com/nbrideau/bluetooth-key-sync
-
-**solved by invoke multiple tools under Windows and Linux: sync keys from Windows registry into Linux configs**:
-
-(requires more steps and reboots, involves using windows tools, manage import/export files)
-
-Most soulutions is kind of import tool of Windows `*.reg` file into Linux bluetooth configuration.
-
-* [UI] https://github.com/nagi1999a/BluetoothDualBootHelper
-* [simple cli] https://github.com/ademlabs/synckeys
-* https://github.com/Krakenus/bluetooth-dualboot-fixer
-* https://github.com/LondonAppDev/dual-boot-bluetooth-pair
-* https://github.com/heyzec/dual-boot-mouse
-* https://github.com/arunpandian7/DuoPair-Bluetooth
-* https://github.com/luismaf/bluetooth-dual-boot
-* [repeative arguments] https://github.com/aryklein/dualBootMouse
+* provides a single [simple CLI](#cli-reference), doesn't require invoking additional scripts
+* discovers the mounted Windows partition automatically
+* safe update of the Windows Registry without changing the file size (rewrite only)
+* [backs up the Windows Registry](#--backup-vs---no-backup) before the update
+* doesn't require importing/exporting files or handling encoding issues
+* allows `--dry-run` before making actual changes
 
 
-**Mac OS**:
-
-* https://github.com/HenrySeed/macosDualBootingBluetoothKeys
-* https://github.com/sarneeh/mac-win-dualboot-bt
-
-
-## Cli reference
+## CLI reference
 
 ```console
-$ bt-dualboot -h
+$ uvx --from bt-dualboot-sync bt-dualboot -h
 usage: bt-dualboot [-h] [-l] [--list-win-mounts] [--bot] [--dry-run] [--win MOUNT] [--sync MAC [MAC ...]] [--sync-all] [-n] [-b [path]]
 
 Sync bluetooth keys from Linux to Windows.
@@ -256,9 +233,11 @@ Backup Windows Registry:
                         path to backup directory, default: /var/backup/bt-dualboot
 ```
 
-## Next releases
+## License
 
-First priority is to extend list of tested and supported OS.
+Released under the MIT License. See [`LICENSE`](LICENSE).
 
-General roadmap assumes creating GUI and background service versions, adding sync Linux to Linux ability. It will be implemented on demand - give a voice at https://github.com/x2es/bt-dualboot/issues/2
+Fork of [x2es/bt-dualboot](https://github.com/x2es/bt-dualboot) by Konstantin Ivanov.
 
+Copyright © 2022 Konstantin Ivanov
+Copyright © 2026 Vedran Hrabar

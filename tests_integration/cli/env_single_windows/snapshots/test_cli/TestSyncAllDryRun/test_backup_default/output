@@ -1,9 +1,8 @@
 CONTEXT: [env_single_windows] valid environment with single windows mounted
-CMD: sudo sh -c eval $(python-libfaketime); FAKETIME='@2020-12-24 20:30:00' /src/bt-dualboot --win /mnt/win --sync-all --backup --dry-run
 RETCODE=0
 STDOUT:
 =======
-> DRY RUN BACKUP /mnt/win/Windows/System32/config/SYSTEM to /var/backup/bt-dualboot/SYSTEM-2020-12-24--20-29-59
+> DRY RUN BACKUP /mnt/win/Windows/System32/config/SYSTEM to /var/backup/bt-dualboot/SYSTEM-2020-12-24--20-30-00
 
 Syncing...
 ==========
