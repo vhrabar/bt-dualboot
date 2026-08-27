@@ -2,7 +2,7 @@
 name = "bt-dualboot-sync"
 version = "1.0.1"
 description = "Sync Bluetooth for dualboot Linux and Windows"
-readme = "README.md"
+readme = "bt_dualboot/README.md"
 license = "MIT"
 authors = [
     { name = "Vedran Hrabar", email = "vedran.hrabar@outlook.com" },
