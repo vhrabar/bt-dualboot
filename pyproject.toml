@@ -1,6 +1,6 @@
 [project]
 name = "bt-dualboot-sync"
-version = "1.0.1"
+version = "0.1.0"
 description = "Sync Bluetooth for dualboot Linux and Windows"
 readme = "bt_dualboot/README.md"
 license = "MIT"
@@ -49,9 +49,7 @@ dev = [
     "pytest-watch",
     "pytest-snapshot",
     "libfaketime",
-    "black",
-    "autopep8",
-    "flake8",
+    "ruff",
 ]
 
 [tool.pytest.ini_options]
@@ -68,3 +66,38 @@ packages = ["bt_dualboot"]
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+
+
+[tool.ruff]
+line-length = 105
+target-version = "py311"
+
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "W",
+    "I",
+    "UP",
+    "B",
+    "SIM",
+    "RUF",
+]
+ignore = [
+    "E501",
+    "RUF012",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/*"     = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["bt_dualboot"]
+
+[tool.ruff.format]
+quote-style           = "double"
+indent-style          = "space"
+docstring-code-format = true
