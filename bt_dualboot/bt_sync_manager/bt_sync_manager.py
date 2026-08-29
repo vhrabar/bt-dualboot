@@ -1,11 +1,13 @@
 import sys
 from contextlib import contextmanager
 
+from bt_dualboot.bluetooth_device import BluetoothDevice
+
 # fmt: off
-from bt_dualboot.bt_linux.devices   import get_devices as get_linux_devices
+from bt_dualboot.bt_linux.devices import get_devices as get_linux_devices
+from bt_dualboot.bt_windows.convert import mac_to_reg_key
 from bt_dualboot.bt_windows.devices import get_devices as get_windows_devices
-from bt_dualboot.bt_windows.convert import mac_to_reg_key, hex_string_to_reg_value
-from bt_dualboot.bluetooth_device   import BluetoothDevice
+
 # fmt: on
 
 
@@ -112,9 +114,7 @@ class BtSyncManager:
 
         common_devices_macs = [mac for mac, devices in index.items() if len(devices) == 2]
         synced_devices = [
-            index[mac][0]
-            for mac in common_devices_macs
-            if index[mac][0].synced(index[mac][1])
+            index[mac][0] for mac in common_devices_macs if index[mac][0].synced(index[mac][1])
         ]
 
         return synced_devices
@@ -130,9 +130,7 @@ class BtSyncManager:
 
         common_devices_macs = [mac for mac, devices in index.items() if len(devices) == 2]
         needs_sync_devices = [
-            index[mac][0]
-            for mac in common_devices_macs
-            if not index[mac][0].synced(index[mac][1])
+            index[mac][0] for mac in common_devices_macs if not index[mac][0].synced(index[mac][1])
         ]
 
         return needs_sync_devices
@@ -232,7 +230,7 @@ class BtSyncManager:
 
             devices_for_update = []
             for device_mac in target_items_macs:
-                if device_mac not in index.keys():
+                if device_mac not in index:
                     raise DeviceNotFoundError(f"Can't push {device_mac}! Not found!")
 
                 device_linux, device_windows = index[device_mac]

@@ -1,8 +1,17 @@
 import re
-from .convert import mac_from_reg_key, hex_string_from_reg, is_mac_reg_key, int_from_dword_reg, int_from_hex_b_reg 
+
 from bt_dualboot.bluetooth_device import BluetoothDevice
 
+from .convert import (
+    hex_string_from_reg,
+    int_from_dword_reg,
+    int_from_hex_b_reg,
+    is_mac_reg_key,
+    mac_from_reg_key,
+)
+
 REG_KEY__BLUETOOTH_PAIRING_KEYS = r"ControlSet001\Services\BTHPORT\Parameters\Keys"
+
 
 def get_device_nodes(from_sections):
     """Extract devices nodes from a section list
@@ -12,7 +21,7 @@ def get_device_nodes(from_sections):
     Returns:
         list[tuple]: tuple with three elements (adapter mac address, device mac address, section key)
     """
-    nodes = [] 
+    nodes = []
     search_re = r"Services.BTHPORT.Parameters.Keys.([a-f0-9]+)\\([a-f0-9]+)$"
     for sec in from_sections:
         node = re.search(search_re, sec)
@@ -20,6 +29,7 @@ def get_device_nodes(from_sections):
             nodes.append((mac_from_reg_key(node.groups()[0]), mac_from_reg_key(node.groups()[1]), sec))
 
     return nodes
+
 
 def extract_adapter_mac(from_section_key):
     """Extracts adapter MAC from section key
@@ -50,7 +60,7 @@ def get_devices(windows_registry):
     reg_data = windows_registry.export_as_config(REG_KEY__BLUETOOTH_PAIRING_KEYS)
     bluetooth_devices = []
 
-    for section_key in reg_data.keys():
+    for section_key in reg_data:
         adapter_mac = extract_adapter_mac(section_key)
         if adapter_mac is None:
             continue
@@ -78,7 +88,7 @@ def get_devices(windows_registry):
                 adapter_mac=adapter_mac,
                 ltk=hex_string_from_reg(ltk),
                 rand=int_from_hex_b_reg(erand),
-                ediv=int_from_dword_reg(ediv)
+                ediv=int_from_dword_reg(ediv),
             )
         )
 
