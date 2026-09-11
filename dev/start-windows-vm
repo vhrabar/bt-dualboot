@@ -1,0 +1,253 @@
+#!/usr/bin/env sh
+#
+# Boot the real Windows installation in a VM to verify that pairing keys synced
+# by bt-dualboot actually work in Windows.
+#
+
+
+set -e
+
+PROJECT_DIR=$(pwd)
+
+usage() {
+  cat <<'USAGE_EOF'
+Usage: dev/start-windows-vm [options]
+
+  --disk DEV         whole Windows disk, e.g. /dev/nvme1n1  [default: autodetect]
+  --bt-usb VID:PID   USB id of the Bluetooth radio          [default: autodetect from hci0]
+  --no-bt            do not pass the radio to the guest
+  --release-btusb    unload btusb on the host before start, reload on exit
+  --overlay PATH     qcow2 overlay path                     [default: /var/tmp/bt-dualboot-win-vm.qcow2]
+  --keep-overlay     reuse an existing overlay instead of recreating it
+  --memory MB        guest memory                           [default: 4096]
+  --cpus N           guest cpus                             [default: 4]
+  --dry-run          print the qemu command and exit, change nothing
+  -y, --yes          skip the confirmation prompt
+  -h, --help         this help
+USAGE_EOF
+}
+
+die() {
+  echo "ERROR: $*" >&2
+  exit 1
+}
+
+disk=""
+bt_id=""
+overlay="/var/tmp/bt-dualboot-win-vm.qcow2"
+memory=4096
+cpus=4
+fl_no_bt=0
+fl_release_btusb=0
+fl_keep_overlay=0
+fl_dry_run=0
+fl_yes=0
+
+while [ $# -ne 0 ]; do
+  arg=$1
+  shift
+
+  case "$arg" in
+    "--disk")          disk=$1;    shift ;;
+    "--bt-usb")        bt_id=$1;   shift ;;
+    "--overlay")       overlay=$1; shift ;;
+    "--memory")        memory=$1;  shift ;;
+    "--cpus")          cpus=$1;    shift ;;
+    "--no-bt")         fl_no_bt=1 ;;
+    "--release-btusb") fl_release_btusb=1 ;;
+    "--keep-overlay")  fl_keep_overlay=1 ;;
+    "--dry-run")       fl_dry_run=1 ;;
+    "-y"|"--yes")      fl_yes=1 ;;
+    "-h"|"--help")     usage; exit 0 ;;
+    *)                 usage; die "unknown option: $arg" ;;
+  esac
+done
+
+as_root=""
+as_root_quiet=""
+if [ "$(id -u)" -ne 0 ]; then
+  as_root="sudo"
+  as_root_quiet="sudo -n"   # never block on a password prompt during preflight
+fi
+
+[ -z "$(which qemu-system-x86_64)" ] && die "qemu-system-x86_64 not found"
+[ -z "$(which qemu-img)" ]           && die "qemu-img not found"
+[ ! -e /dev/kvm ]                    && die "/dev/kvm not available; KVM is required"
+
+#
+# Windows disk: the parent of the largest NTFS partition which is not on the
+#
+root_disk=$(lsblk -nrpo PKNAME "$(findmnt -no SOURCE /)" | head -1)
+
+if [ -z "$disk" ]; then
+  disk=$(lsblk -bnrpo NAME,FSTYPE,PKNAME,SIZE \
+    | awk -v skip="$root_disk" '$2 == "ntfs" && $3 != skip { print $4, $3 }' \
+    | sort -rn | head -1 | cut -d' ' -f2)
+
+  [ -z "$disk" ] && die "no NTFS partition found outside $root_disk; use --disk"
+fi
+
+[ ! -b "$disk" ]           && die "not a block device: $disk"
+[ "$disk" = "$root_disk" ] && die "refusing to boot the disk holding /: $disk"
+
+#
+# Preflight over every partition of the Windows disk
+#
+parts=$(lsblk -nrpo NAME,PKNAME | awk -v d="$disk" '$2 == d { print $1 }')
+[ -z "$parts" ] && die "no partitions found on $disk"
+
+warnings=""
+
+for part in $parts; do
+  mountpoint=$(findmnt -nro TARGET -S "$part" | head -1)
+
+  if [ -n "$mountpoint" ]; then
+    die "$part is mounted at $mountpoint; unmount the Windows partitions first
+     (the guest would boot a snapshot the host is still changing)"
+  fi
+
+  fstype=$(lsblk -nrpo FSTYPE "$part" | head -1)
+
+  if [ "$fstype" = "BitLocker" ]; then
+    die "$part is BitLocker encrypted; the guest will stop at the recovery key prompt"
+  fi
+
+  # advisory: NTFS dirty bit is set while Windows is hibernated / Fast Startup'ed
+  if [ "$fstype" = "ntfs" ] && [ -n "$(which ntfsinfo)" ]; then
+    state=$($as_root_quiet ntfsinfo -m "$part" 2>/dev/null | awk -F': *' '/Volume State/ { print $2 }' | head -1)
+
+    if [ -n "$state" ] && [ $((state & 1)) -ne 0 ]; then
+      warnings="$warnings
+  ! $part is marked dirty - Windows may be hibernated (Fast Startup).
+    Synced keys are lost when Windows restores its registry on resume."
+    fi
+  fi
+done
+
+# Bluetooth radio
+
+if [ $fl_no_bt -eq 0 ] && [ -z "$bt_id" ]; then
+  sys_path=$(readlink -f /sys/class/bluetooth/hci0 2>/dev/null)
+
+  while [ -n "$sys_path" ] && [ "$sys_path" != "/" ]; do
+    if [ -r "$sys_path/idVendor" ]; then
+      bt_id="$(cat "$sys_path/idVendor"):$(cat "$sys_path/idProduct")"
+      break
+    fi
+    sys_path=$(dirname "$sys_path")
+  done
+
+  [ -z "$bt_id" ] && die "no USB Bluetooth radio found for hci0; use --bt-usb VID:PID or --no-bt"
+fi
+
+[ $fl_no_bt -eq 1 ] && bt_id=""
+
+if [ -n "$bt_id" ]; then
+  bt_vendor=$(echo "$bt_id" | cut -d: -f1)
+  bt_product=$(echo "$bt_id" | cut -d: -f2)
+
+  { [ -z "$bt_vendor" ] || [ -z "$bt_product" ]; } && die "--bt-usb expects VID:PID, got: $bt_id"
+fi
+
+# Firmware: OVMF code is read-only, vars are a per-overlay writable copy
+
+ovmf_code=""
+for candidate in \
+  /usr/share/OVMF/OVMF_CODE_4M.fd \
+  /usr/share/OVMF/OVMF_CODE.fd \
+  /usr/share/edk2/ovmf/OVMF_CODE.fd \
+  /usr/share/qemu/ovmf-x86_64-code.bin
+do
+  [ -r "$candidate" ] && ovmf_code=$candidate && break
+done
+
+[ -z "$ovmf_code" ] && die "OVMF firmware not found; install the ovmf package"
+
+ovmf_vars_template=$(echo "$ovmf_code" | sed 's/_CODE/_VARS/; s/-code/-vars/')
+[ ! -r "$ovmf_vars_template" ] && die "OVMF vars template not found: $ovmf_vars_template"
+
+ovmf_vars="$overlay.vars.fd"
+
+#
+# Overlay
+#
+[ -b "$overlay" ] && die "refusing to use a block device as overlay: $overlay"
+[ ! -d "$(dirname "$overlay")" ] && die "overlay directory does not exist: $(dirname "$overlay")"
+
+if [ $fl_keep_overlay -eq 1 ] && [ ! -f "$overlay" ]; then
+  echo "! no overlay at $overlay yet, creating it"
+  fl_keep_overlay=0
+fi
+
+# Summary
+
+cat <<SUMMARY_EOF
+
+bt-dualboot: boot Windows in a VM
+=================================
+ disk (read-only backing) : $disk
+ overlay (all guest writes): $overlay $([ $fl_keep_overlay -eq 1 ] && echo '(reused)' || echo '(recreated)')
+ firmware                  : $ovmf_code
+ bluetooth radio           : ${bt_id:-none (--no-bt)}
+ guest                     : ${cpus} cpus, ${memory} MB
+SUMMARY_EOF
+
+[ -n "$warnings" ] && echo "$warnings"
+echo
+
+if [ $fl_dry_run -eq 0 ] && [ $fl_yes -eq 0 ]; then
+  printf 'Start the VM? [y/N] '
+  read -r answer
+  case "$answer" in
+    [yY]*) ;;
+    *) echo "aborted"; exit 0 ;;
+  esac
+fi
+
+# Build the qemu command
+set -- \
+  -machine q35,accel=kvm \
+  -cpu host \
+  -smp "$cpus" \
+  -m "$memory" \
+  -rtc base=localtime \
+  -drive "if=pflash,format=raw,readonly=on,file=$ovmf_code" \
+  -drive "if=pflash,format=raw,file=$ovmf_vars" \
+  -drive "if=none,id=windisk,format=qcow2,file=$overlay" \
+  -device nvme,drive=windisk,serial=btdualboot \
+  -netdev user,id=net0 \
+  -device virtio-net-pci,netdev=net0 \
+  -device qemu-xhci,id=xhci \
+  -device usb-tablet \
+  -vga std \
+  -display gtk \
+  -boot menu=on
+
+if [ -n "$bt_id" ]; then
+  set -- "$@" -device "usb-host,vendorid=0x$bt_vendor,productid=0x$bt_product,id=btradio"
+fi
+
+if [ $fl_dry_run -eq 1 ]; then
+  echo "would create overlay:"
+  echo "  $as_root qemu-img create -f qcow2 -b $disk -F raw $overlay"
+  echo "  $as_root cp $ovmf_vars_template $ovmf_vars"
+  echo
+  echo "would run:"
+  printf '  %s qemu-system-x86_64' "$as_root"
+  printf " '%s'" "$@"
+  echo
+  exit 0
+fi
+
+if [ $fl_keep_overlay -eq 0 ]; then
+  $as_root rm -f "$overlay" "$ovmf_vars"
+  $as_root qemu-img create -f qcow2 -b "$disk" -F raw "$overlay" >/dev/null
+  $as_root cp "$ovmf_vars_template" "$ovmf_vars"
+fi
+
+if [ $fl_release_btusb -eq 1 ]; then
+  trap '$as_root modprobe btusb 2>/dev/null || true' EXIT INT TERM
+  $as_root modprobe -r btusb
+fi
+
+$as_root qemu-system-x86_64 "$@"
