@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Sync Bluetooth for dualboot Linux and Windows"
 readme = "bt_dualboot/README.md"
 license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     { name = "Vedran Hrabar", email = "vedran.hrabar@outlook.com" },
 ]
@@ -16,6 +17,9 @@ classifiers = [
     "Intended Audience :: System Administrators",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Home Automation",
     "Topic :: Multimedia",
     "Topic :: System",
@@ -26,10 +30,11 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-homepage = "https://github.com/vhrabar/bt-dualboot"
-repository = "https://github.com/vhrabar/bt-dualboot"
-documentation =  "https://github.com/vhrabar/bt-dualboot/wiki"
-"bug Tracker" = "https://github.com/vhrabar/bt-dualboot/issues"
+Homepage = "https://github.com/vhrabar/bt-dualboot"
+Repository = "https://github.com/vhrabar/bt-dualboot"
+Documentation = "https://github.com/vhrabar/bt-dualboot/wiki"
+Issues = "https://github.com/vhrabar/bt-dualboot/issues"
+Changelog = "https://github.com/vhrabar/bt-dualboot/blob/main/CHANGELOG.md"
 
 
 [project.scripts]
@@ -45,11 +50,11 @@ environments = [
 
 [dependency-groups]
 dev = [
-    "pytest",
+    "pytest>=8",
     "pytest-watch",
-    "pytest-snapshot",
+    "pytest-snapshot>=0.9",
     "libfaketime",
-    "ruff",
+    "ruff>=0.16",
 ]
 
 [tool.pytest.ini_options]
@@ -64,7 +69,7 @@ addopts = "-m 'not manual'"
 packages = ["bt_dualboot"]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 
