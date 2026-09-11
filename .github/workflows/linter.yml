@@ -49,6 +49,9 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
+      - name: Install chntpw
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends chntpw
+
       - name: pytest
         run: uv run --python ${{ matrix.python }} -- pytest tests/
 
