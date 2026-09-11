@@ -1,9 +1,10 @@
 import os
-import sys
 import shutil
+import sys
 from itertools import repeat
-from bt_dualboot.win_mount import locate_windows_mount_points
+
 from bt_dualboot.bt_linux.devices import LINUX_BT_DIR, get_devices_paths
+from bt_dualboot.win_mount import locate_windows_mount_points
 
 
 def is_debug():
@@ -16,7 +17,7 @@ def is_linux():
 
 def invariant_and_halt(condition, error_message):
     if condition:
-        raise SystemExit("ERROR: {}".format(error_message))
+        raise SystemExit(f"ERROR: {error_message}")
 
 
 def require_linux():

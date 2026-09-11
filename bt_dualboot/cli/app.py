@@ -1,8 +1,8 @@
-import sys
 import os
+import re
+import sys
 from argparse import ArgumentParser, ArgumentTypeError
 from contextlib import contextmanager
-import re
 
 from bt_dualboot.__meta__ import APP_NAME, __version__
 from bt_dualboot.bt_sync_manager import BtSyncManager, DeviceNotFoundError
@@ -11,12 +11,12 @@ from bt_dualboot.windows_registry import WindowsRegistry
 
 from .tools import (
     is_debug,
-    require_linux,
-    require_chntpw_package,
-    require_univocal_windows_location,
-    require_bt_dir_access,
-    print_header,
     print_devices_list,
+    print_header,
+    require_bt_dir_access,
+    require_chntpw_package,
+    require_linux,
+    require_univocal_windows_location,
 )
 
 DEFAULT_BACKUP_PATH = os.path.join(os.sep, "var", "backup", "bt-dualboot")
@@ -42,7 +42,7 @@ def _argv_parser():
     args_sync    = arg_parser.add_argument_group("Sync keys")
     args_backup  = arg_parser.add_argument_group("Backup Windows Registry")
 
-    arg_parser   .add_argument("--version",             help=f"print version",                                action="store_true")
+    arg_parser   .add_argument("--version",             help="print version",                                action="store_true")
     args_list    .add_argument("-l", "--list",          help="[root required] list bluetooth devices",        action="store_true")
     args_list    .add_argument("--list-win-mounts",     help="list mounted Windows locations",                action="store_true")
     args_list    .add_argument("--bot",                 help="parsable output for robots (supported: -l)",    action="store_true")
@@ -57,7 +57,7 @@ def _argv_parser():
     #   when user set `--backup` without path opts.backup would be None
     #   when user set `--backup /path` opts.backup would be a /path
     args_backup  .add_argument("-b", "--backup",        help=f"path to backup directory, default: {DEFAULT_BACKUP_PATH}",
-                                                                                                              nargs="?", metavar="path", default=False)     # noqa: E127
+                                                                                                              nargs="?", metavar="path", default=False)
     # fmt: on
     return arg_parser
 
@@ -90,7 +90,7 @@ def no_device_error_handler():
         yield
     except DeviceNotFoundError as err:
         message = err.args[0]
-        raise SystemExit(f"ERROR: {message}\nNothing changed.")
+        raise SystemExit(f"ERROR: {message}\nNothing changed.") from err
 
 
 class Application:
@@ -298,7 +298,7 @@ def parse_argv():
 
     opts_dict = vars(opts)
 
-    required_specified = [name for name in blank_states.keys() if opts_dict[name] != blank_states[name]]
+    required_specified = [name for name in blank_states if opts_dict[name] != blank_states[name]]
 
     if len(required_specified) == 0:
         parser.error("missing required argument")

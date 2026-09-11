@@ -1,5 +1,6 @@
-import os
 import glob
+import os
+
 from .bluetooth_device_factory import bluetooth_device_factory
 
 LINUX_BT_DIR = "/var/lib/bluetooth"

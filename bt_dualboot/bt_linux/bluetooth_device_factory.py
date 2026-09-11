@@ -1,6 +1,7 @@
-from bt_dualboot.bluetooth_device import BluetoothDevice
 import re
 from configparser import ConfigParser
+
+from bt_dualboot.bluetooth_device import BluetoothDevice
 
 
 def extract_macs(device_info_path):
@@ -71,5 +72,5 @@ def bluetooth_device_factory(device_info_path):
         adapter_mac=macs["adapter_mac"],
         ltk=info["long_term_key"],
         ediv=int(info["ediv"]) if info["ediv"] else None,
-        rand=int(info["rand"]) if info["rand"] else None
+        rand=int(info["rand"]) if info["rand"] else None,
     )

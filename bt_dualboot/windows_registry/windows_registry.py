@@ -1,10 +1,9 @@
-from configparser import ConfigParser
-from tempfile import TemporaryDirectory
-import subprocess
 import os
 import shutil
+import subprocess
+from configparser import ConfigParser
 from datetime import datetime
-
+from tempfile import TemporaryDirectory
 
 WINDOWS10_REGISTRY_PATH = os.path.join("Windows", "System32", "config", "SYSTEM")
 
@@ -67,7 +66,7 @@ class WindowsRegistry:
 
     @classmethod
     def reg_file_signature(cls):
-        return "Windows Registry Editor Version 5.00" ""
+        return "Windows Registry Editor Version 5.00"
 
     def _registry_file(self):
         if self.registry_file_path is not None:
@@ -98,7 +97,7 @@ class WindowsRegistry:
             ]
             subprocess.run(export_cmd, **subprocess_output_opts())
 
-            with open(exported_reg_filename, "r") as f:
+            with open(exported_reg_filename) as f:
                 # skip first line "Windows Registry Editor Version 5.00" for ConfigParser compability
                 exported_text = "".join(f.readlines()[1:])
 
@@ -159,7 +158,7 @@ class WindowsRegistry:
             with open(tmp_filename, "w") as f:
                 print(self.reg_file_signature(), file=f)
 
-                for inp_section_key in data_dict.keys():
+                for inp_section_key in data_dict:
                     reg_section_key = inp_section_key
                     if (
                         auto_prefix
@@ -193,7 +192,7 @@ class WindowsRegistry:
 
             if is_debug():
                 print("Importing into Windows registry...")
-                with open(tmp_filename, "r") as f:
+                with open(tmp_filename) as f:
                     print(f.read())
 
             os.unlink(tmp_filename)
