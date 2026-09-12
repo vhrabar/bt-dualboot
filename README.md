@@ -240,4 +240,5 @@ Released under the MIT License. See [`LICENSE`](LICENSE).
 Fork of [x2es/bt-dualboot](https://github.com/x2es/bt-dualboot) by Konstantin Ivanov.
 
 Copyright © 2022 Konstantin Ivanov
+
 Copyright © 2026 Vedran Hrabar

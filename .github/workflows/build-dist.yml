@@ -1,0 +1,55 @@
+name: Build Release Distributions
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check tag against project.version
+        if: github.event_name == 'release'
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          VERSION="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')"
+          if [ "$TAG" != "v${VERSION}" ]; then
+            echo "::error::release tag '$TAG' does not match project.version '$VERSION' in pyproject.toml"
+            exit 1
+          fi
+
+  build:
+    needs: [verify]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+
+      - name: Build sdist and wheel
+        run: uv build --out-dir dist
+
+      - name: Check distribution metadata
+        run: uvx twine check dist/*
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/*
+
+      - name: Attach distributions to the GitHub Release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/* --clobber --repo "${{ github.repository }}"

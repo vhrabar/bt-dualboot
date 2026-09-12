@@ -61,6 +61,7 @@ def mac_to_reg_key(mac):
 
     return "".join(mac.split(":")).lower()
 
+
 def int_from_hex_b_reg(hex_b_string_reg):
     """Convert hex b string from Windows registry format
     Args:
@@ -72,6 +73,7 @@ def int_from_hex_b_reg(hex_b_string_reg):
     _, value = hex_b_string_reg.split(":")
     hex_string = "".join(list(value.split(",")))
     return int.from_bytes(bytes.fromhex(hex_string), "little")
+
 
 def int_from_dword_reg(dword_string_reg):
     """Convert hex b string from Windows registry format
@@ -86,6 +88,7 @@ def int_from_dword_reg(dword_string_reg):
     # see: https://learn.microsoft.com/en-us/windows/win32/sysinfo/registry-value-types
     # however, Microsoft is lying and it is in fact big endian
     return int.from_bytes(bytes.fromhex(value), "big")
+
 
 def hex_string_from_reg(hex_string_reg):
     """Convert hex string from Windows registry format
@@ -112,6 +115,7 @@ def hex_string_to_reg_value(hex_string):
     value = ",".join(hex_string_to_pairs(hex_string.lower()))
     return f"hex:{value}"
 
+
 def hex_string_to_reg_hex_b(hex_string):
     """Convert hex string to Windows registry value (b)
     Args:
@@ -122,6 +126,7 @@ def hex_string_to_reg_hex_b(hex_string):
     """
     value = ",".join(hex_string_to_pairs(hex_string.lower()))
     return f"hex(b):{value}"
+
 
 def _unquote(value):
     """unquote value is quoted

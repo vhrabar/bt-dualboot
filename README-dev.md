@@ -33,6 +33,7 @@ $ dev/start-tests-manual                     # spawn shell inside Docker contain
 $ dev/start-tests-all                        # invoke unit & integration tests
 $ dev/start-tests-all --flags pre-release    # plus invoke pre-release environments like `pip install`, 
                                              # test over different Python versions and so on
+$ dev/start-windows-vm                       # boot real Windows in a VM to verify a sync
 $ dev/pre-release-all                        # overview issues prior release
 ...
 ```
@@ -290,6 +291,56 @@ def test_initial(debug_shell):
 ```
 
 `pyproject.toml` sets `addopts = "-m 'not manual'"`, so `@pytest.mark.manual` tests won't be invoked during a regular tests run; passing `-m manual` (as `dev/start-tests-manual` does) overrides that and selects only them.
+
+
+### `dev/start-windows-vm`: verify a sync in Windows without rebooting
+
+The test suites prove that bt-dualboot writes the correct pairing key into a real
+`SYSTEM` Hive file. They can't prove Windows accepts it - only Windows can.
+
+This tool boots the *real* Windows installation in a QEMU VM and hands the USB
+Bluetooth radio to the guest, so a synced device can be connected for real.
+
+**The Windows disk is never written to.** QEMU boots a qcow2 overlay which keeps
+the disk as a read-only backing file; every guest write lands in the overlay and
+is thrown away with it. Windows may bump the key inside the guest - the key
+bt-dualboot wrote is still what real Windows finds on its next boot.
+
+```console
+$ dev/start-windows-vm --dry-run     # print the qemu command, change nothing
+$ dev/start-windows-vm               # detect, confirm, boot
+$ dev/start-windows-vm --disk /dev/sdb --bt-usb 0489:e11c --keep-overlay
+$ dev/start-windows-vm --help
+```
+
+The Windows disk (parent of the largest NTFS partition outside the disk holding
+`/`) and the radio (USB id behind `hci0`) are autodetected; `--disk` / `--bt-usb`
+override. Preflight refuses to run when a partition of the target disk is still
+mounted, when it is BitLocker encrypted, or when the target is the disk holding
+`/`, and warns when the NTFS dirty bit suggests Windows is hibernated.
+
+Typical flow:
+
+1. fully shut down Windows (see Fast Startup below)
+2. `sudo .venv/bin/bt-dualboot --sync-all` while the Windows partition is mounted rw
+   (absolute path: `sudo`'s `secure_path` strips the venv's `bin` from `PATH`)
+3. unmount the Windows partition
+4. `dev/start-windows-vm`, then connect the device inside the guest
+
+NOTES:
+  (i) **Fast Startup / hibernation** is the usual reason a sync "doesn't work":
+      Windows restores its registry from `hiberfil.sys` on resume and the synced
+      key silently disappears. Windows must have been fully shut down.
+  (ii) One radio can't serve two systems at once - the host loses Bluetooth while
+      the guest runs. Use `--release-btusb` if the guest doesn't get the radio.
+  (iii) Expect first-boot driver installs and possibly an activation nag: the
+      guest's virtual hardware differs from the real board. Harmless in a
+      throwaway overlay.
+  (iv) If the guest drops into the UEFI shell, the fresh NVRAM has no boot entry
+      yet - run `FS0:` then `\EFI\Microsoft\Boot\bootmgfw.efi`, and pass
+      `--keep-overlay` afterwards so the entry persists between runs.
+  (v) bt-dualboot syncs Linux -> Windows only. Re-pairing inside the guest
+      changes the key on the Windows side; don't read that as the tool failing.
 
 
 ### `dev/pre-release-all`: ensure current working copy ready to release

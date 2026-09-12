@@ -1,5 +1,11 @@
-from bt_dualboot.bt_windows.convert import mac_to_reg_key, hex_string_to_reg_value, hex_string_to_reg_hex_b
 import struct
+
+from bt_dualboot.bt_windows.convert import (
+    hex_string_to_reg_hex_b,
+    hex_string_to_reg_value,
+    mac_to_reg_key,
+)
+
 
 class BluetoothDevice:
     """Representation of bluetooth device
@@ -47,15 +53,21 @@ class BluetoothDevice:
         if self.source is not None:
             source = self.source[0]
         return f"{self.__class__} {source} [{self.mac}] {self.name}"
-    
+
     def _get_reg_adapter_section_key(self):
         if self.pairing_key:
             return (
-                r"ControlSet001\Services\BTHPORT\Parameters\Keys" + "\\" + mac_to_reg_key(self.adapter_mac)
+                r"ControlSet001\Services\BTHPORT\Parameters\Keys"
+                + "\\"
+                + mac_to_reg_key(self.adapter_mac)
             )
         if self.ltk:
             return (
-                r"ControlSet001\Services\BTHPORT\Parameters\Keys" + "\\" + mac_to_reg_key(self.adapter_mac) + "\\" + mac_to_reg_key(self.mac)
+                r"ControlSet001\Services\BTHPORT\Parameters\Keys"
+                + "\\"
+                + mac_to_reg_key(self.adapter_mac)
+                + "\\"
+                + mac_to_reg_key(self.mac)
             )
         raise Exception(f"Missing pairing key or long term key for {self.adapter_mac}/{self.mac}")
 
@@ -75,24 +87,20 @@ class BluetoothDevice:
         if self.pairing_key:
             device_key = f'"{mac_to_reg_key(self.mac)}"'
             pairing_key = hex_string_to_reg_value(self.pairing_key)
-            return self._get_reg_adapter_section_key(), {
-                    device_key: pairing_key
-                }
+            return self._get_reg_adapter_section_key(), {device_key: pairing_key}
         elif self.ltk:
             return self._get_reg_adapter_section_key(), {
-                    '"LTK"': hex_string_to_reg_value(self.ltk),
-                    '"ERand"': self.rand_to_erand(),
-                    '"EDIV"': self.ediv_to_dword()
-                }
+                '"LTK"': hex_string_to_reg_value(self.ltk),
+                '"ERand"': self.rand_to_erand(),
+                '"EDIV"': self.ediv_to_dword(),
+            }
         raise KeyError(f"Device {self.mac} has neither pairing key, nor long term key")
 
     def synced(self, other):
         if self.pairing_key:
             return self.pairing_key == other.pairing_key
         if self.ltk and self.rand and self.ediv:
-            return (self.ltk == other.ltk and
-                    self.rand == other.rand and
-                    self.ediv == other.ediv)
+            return self.ltk == other.ltk and self.rand == other.rand and self.ediv == other.ediv
 
     @classmethod
     def source_linux(cls):
