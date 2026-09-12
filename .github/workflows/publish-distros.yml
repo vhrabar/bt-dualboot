@@ -1,0 +1,373 @@
+name: Publish distro packages
+
+# Single entry point for the distro channels, mirroring vhrabar/SecureEye:
+#
+#   version -> verify-(deb|rpm|arch) -> publish-ppa / copr / aur
+#
+
+#   PPA_GPG_PRIVATE_KEY / PPA_GPG_PASSPHRASE   launchpad-ppa
+#   COPR_CONFIG                                copr
+#   AUR_SSH_PRIVATE_KEY                        aur
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build"
+        required: true
+        type: string
+      publish:
+        description: "Also publish to the PPA, COPR and the AUR."
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-distros-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+env:
+  PACKAGE: bt-dualboot-sync
+  DEB_IMAGES: ubuntu:25.10 ubuntu:26.04 ubuntu 26:10
+
+jobs:
+  version:
+    name: Resolve version
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      tag: ${{ steps.ver.outputs.tag }}
+      publish: ${{ steps.ver.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          fetch-depth: 0
+
+      - name: Determine version
+        id: ver
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "release" ]; then
+            tag="$RELEASE_TAG"
+            publish=true
+          else
+            tag="$INPUT_TAG"
+            publish="${{ inputs.publish }}"
+          fi
+          version="${tag#v}"
+
+          PROJECT_VERSION="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')"
+          if [ "$version" != "$PROJECT_VERSION" ]; then
+            echo "::error::tag '$tag' does not match project.version '$PROJECT_VERSION' in pyproject.toml"
+            exit 1
+          fi
+
+          branch="${{ github.event.repository.default_branch }}"
+          git fetch --no-tags origin "+refs/heads/${branch}:refs/remotes/origin/${branch}" >/dev/null 2>&1 || true
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse "refs/remotes/origin/${branch}" 2>/dev/null || echo HEAD)" ]; then
+            echo "::warning::${tag} is not at ${branch} HEAD. Every channel is pinned to the tag, so this is informational."
+          fi
+
+          if [ ! -d packaging ]; then
+            echo "::error::${tag} has no packaging/ directory, so no distro package can be built from it."
+            exit 1
+          fi
+
+          {
+            echo "version=$version"
+            echo "tag=$tag"
+            echo "publish=$publish"
+          } >> "$GITHUB_OUTPUT"
+
+  verify-deb:
+    name: Verify deb (${{ matrix.image }})
+    needs: [version]
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["ubuntu:25.10", "ubuntu:26.04"]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+      - name: Build, lint and install
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          IMAGE: ${{ matrix.image }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/stage/"${PACKAGE}-${VERSION}" dist
+          git archive --format=tar --prefix="${PACKAGE}-${VERSION}/" HEAD | tar -x -C /tmp/stage
+          bash packaging/set-package-version.sh "$VERSION"
+          cp -r packaging /tmp/stage/"${PACKAGE}-${VERSION}/"
+          mv /tmp/stage/"${PACKAGE}-${VERSION}"/packaging/debian /tmp/stage/"${PACKAGE}-${VERSION}"/debian
+          tar --exclude=debian -czf /tmp/stage/"${PACKAGE}_${VERSION}".orig.tar.gz \
+              -C /tmp/stage "${PACKAGE}-${VERSION}"
+
+          docker run --rm -v /tmp/stage:/stage -v "$PWD/dist:/dist" -e VERSION -e PACKAGE "$IMAGE" bash -euc '
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get -qq update
+            apt-get -qq install -y --no-install-recommends \
+              build-essential fakeroot debhelper dh-python pybuild-plugin-pyproject \
+              python3-all python3-hatchling lintian chntpw
+            cd "/stage/${PACKAGE}-${VERSION}"
+            dpkg-buildpackage -us -uc -b
+            cp /stage/*.deb /dist/
+
+            lintian --fail-on error --tag-display-limit 0 /dist/*.deb
+
+            apt-get -qq install -y --no-install-recommends /dist/*.deb
+            dpkg -s "$PACKAGE" | grep -q "^Status: install ok installed"
+            bt-dualboot --version | grep -q "$VERSION"
+            dpkg-deb -c /dist/*.deb | grep -q "usr/share/man/man1/bt-dualboot.1.gz"
+          '
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: deb-${{ strategy.job-index }}
+          path: dist/*.deb
+          if-no-files-found: error
+          retention-days: 7
+
+  verify-rpm:
+    name: Verify rpm
+    needs: [version]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Build via .copr/Makefile, then install
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          docker run --rm -v "$PWD:/src" -v "$PWD/dist:/dist" -w /src -e VERSION -e PACKAGE fedora:latest bash -euc '
+            dnf -q -y install make git rpm-build rpmlint python3-devel pyproject-rpm-macros \
+              python3-hatchling python3-wheel chntpw
+            git config --global --add safe.directory /src
+            make -f .copr/Makefile srpm outdir=/tmp/srpm
+            rpmbuild --rebuild /tmp/srpm/*.src.rpm
+            cp /root/rpmbuild/RPMS/noarch/*.rpm /tmp/srpm/*.src.rpm /dist/
+
+            rpmlint /dist/*.noarch.rpm
+
+            dnf -q -y install /dist/*.noarch.rpm
+            rpm -q "$PACKAGE"
+            bt-dualboot --version | grep -q "$VERSION"
+            rpm -qlp /dist/*.noarch.rpm | grep -q "/usr/share/man/man1/bt-dualboot.1"
+          '
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: rpm
+          path: dist/*.rpm
+          if-no-files-found: error
+          retention-days: 7
+
+  verify-arch:
+    name: Verify Arch package
+    needs: [version]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - name: Build, install and check .SRCINFO
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist /tmp/archbuild
+          bash packaging/set-package-version.sh "$VERSION"
+
+          git archive --format=tar --prefix="bt-dualboot-${VERSION}/" HEAD | tar -x -C /tmp
+          cp -r packaging "/tmp/bt-dualboot-${VERSION}/"
+          tar -czf "/tmp/archbuild/${PACKAGE}-${VERSION}.tar.gz" -C /tmp "bt-dualboot-${VERSION}"
+          sed -e 's#^source=.*#source=("$pkgname-$pkgver.tar.gz")#' \
+              -e "s#^sha256sums=.*#sha256sums=('SKIP')#" \
+              packaging/aur/PKGBUILD > /tmp/archbuild/PKGBUILD
+          cp packaging/aur/.SRCINFO /tmp/archbuild/.SRCINFO.intree
+
+          docker run --rm -v /tmp/archbuild:/build -v "$PWD/dist:/dist" -e VERSION -e PACKAGE archlinux:base-devel bash -euc '
+            pacman -Syu --noconfirm --needed --quiet base-devel namcap chntpw \
+              python-build python-installer python-wheel python-hatchling
+            useradd -m builder && chown -R builder /build
+            su builder -c "cd /build && makepkg --noconfirm"
+            cp /build/*.pkg.tar.zst /dist/
+
+            namcap /dist/*.pkg.tar.zst || true
+
+            pacman -U --noconfirm /dist/*.pkg.tar.zst
+            bt-dualboot --version | grep -q "$VERSION"
+            # this image sets NoExtract = usr/share/man/*, so check the package
+            bsdtar -tf /dist/*.pkg.tar.zst | grep -q "usr/share/man/man1/bt-dualboot.1.gz"
+          '
+
+      - name: Check .SRCINFO is in sync with the PKGBUILD
+        run: |
+          set -euo pipefail
+          cp packaging/aur/PKGBUILD /tmp/srcinfo-check-PKGBUILD
+          docker run --rm -v /tmp:/t archlinux:base-devel bash -euc '
+            useradd -m b
+            install -o b /t/srcinfo-check-PKGBUILD /home/b/PKGBUILD
+            su b -c "cd /home/b && makepkg --printsrcinfo" > /t/srcinfo.expected
+          '
+          diff -u packaging/aur/.SRCINFO /tmp/srcinfo.expected || {
+            echo "::error::packaging/aur/.SRCINFO is out of sync with the PKGBUILD (diff above)."
+            echo "::error::Regenerate it: cd packaging/aur && makepkg --printsrcinfo > .SRCINFO"
+            echo "::error::Do not hand-edit .SRCINFO; set-package-version.sh keeps the version fields in step."
+            exit 1
+          }
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: arch
+          path: dist/*.pkg.tar.zst
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-ppa:
+    name: Publish to Launchpad PPA
+    needs: [version, verify-deb, verify-rpm, verify-arch]
+    if: needs.version.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    environment:
+      name: launchpad-ppa
+      url: https://launchpad.net/~vhrabar/+archive/ubuntu/tools
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - name: Render packaging for the release
+        run: bash packaging/set-package-version.sh "${{ needs.version.outputs.version }}"
+
+      - name: Publish to Launchpad PPA
+        run: bash packaging/publish-ppa.sh
+        env:
+          REPOSITORY: "vhrabar/tools"
+          GPG_PRIVATE_KEY: ${{ secrets.PPA_GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.PPA_GPG_PASSPHRASE }}
+          DEBEMAIL: "vedran.hrabar@outlook.com"
+          DEBFULLNAME: "Vedran Hrabar"
+          DEBIAN_DIR: "packaging/debian"
+          SERIES: "questing resolute stonking"
+          KEEP_CHANGELOG: "1"
+          TARBALL: "https://github.com/${{ github.repository }}/archive/refs/tags/${{ needs.version.outputs.tag }}.tar.gz"
+
+  publish-copr:
+    name: Build on COPR
+    needs: [version, verify-deb, verify-rpm, verify-arch]
+    if: needs.version.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    container: fedora:latest
+    environment:
+      name: copr
+      url: https://copr.fedorainfracloud.org/coprs/vhrabar/bt-dualboot-sync/
+    steps:
+      - name: Install copr-cli
+        run: dnf install -y --setopt=install_weak_deps=False copr-cli
+
+      - name: Submit an SCM build for ${{ needs.version.outputs.tag }}
+        env:
+          COPR_CONFIG_CONTENT: ${{ secrets.COPR_CONFIG }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ -z "${COPR_CONFIG_CONTENT:-}" ]; then
+            echo "::error::COPR_CONFIG secret is not set. Copy the token file from https://copr.fedorainfracloud.org/api/ into it."
+            exit 1
+          fi
+          mkdir -p ~/.config
+          printf '%s\n' "$COPR_CONFIG_CONTENT" > ~/.config/copr
+          chmod 600 ~/.config/copr
+          grep -q '^\[copr-cli\]' ~/.config/copr \
+            || { echo "::error::COPR_CONFIG does not look like a copr-cli token file (no [copr-cli] section)."; exit 1; }
+
+          copr-cli buildscm \
+            --clone-url "https://github.com/${{ github.repository }}" \
+            --commit "$TAG" \
+            --method make_srpm \
+            --nowait \
+            vhrabar/bt-dualboot-sync
+
+  publish-aur:
+    name: Publish to the AUR
+    needs: [version, verify-deb, verify-rpm, verify-arch]
+    if: needs.version.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    environment:
+      name: aur
+      url: https://aur.archlinux.org/packages/bt-dualboot-sync
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - name: Render the PKGBUILD and checksum the released tarball
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$PWD:/src" -w /src -e VERSION archlinux:base-devel bash -euxc '
+            pacman -Syu --noconfirm --needed base-devel pacman-contrib
+            useradd -m builder && chown -R builder /src
+            su builder -c "
+              set -eux
+              cd /src
+              bash packaging/set-package-version.sh \$VERSION
+              cd packaging/aur
+              updpkgsums
+              makepkg --printsrcinfo > .SRCINFO
+            "
+          '
+          sudo chown -R "$(id -u):$(id -g)" .
+          grep -qE "^[[:space:]]*pkgver = ${VERSION}$" packaging/aur/.SRCINFO
+          grep -qE "^sha256sums=\('[0-9a-f]{64}'\)$" packaging/aur/PKGBUILD \
+            || { echo "::error::updpkgsums did not write a real checksum"; exit 1; }
+          git diff --stat
+
+      - name: Push to the AUR
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [ -z "${AUR_SSH_PRIVATE_KEY:-}" ]; then
+            echo "::error::AUR_SSH_PRIVATE_KEY secret is not set."
+            exit 1
+          fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          ssh-keyscan -t rsa,ed25519 aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes"
+
+          git clone "ssh://aur@aur.archlinux.org/${PACKAGE}.git" /tmp/aur
+          cp packaging/aur/PKGBUILD packaging/aur/.SRCINFO /tmp/aur/
+
+          git -C /tmp/aur config user.name "Vedran Hrabar"
+          git -C /tmp/aur config user.email "vedran.hrabar@outlook.com"
+          git -C /tmp/aur add -A
+          if git -C /tmp/aur diff --cached --quiet; then
+            echo "The AUR is already at ${VERSION}; nothing to push."
+          else
+            git -C /tmp/aur commit -m "Update to ${VERSION}"
+            git -C /tmp/aur push origin HEAD:master
+            echo "Pushed ${PACKAGE} ${VERSION} to the AUR."
+          fi
