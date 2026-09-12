@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- The Ubuntu packages build again. Releases cut on the same day were given changelog timestamps in the wrong order, because the offset that separates them was written as `+N minutes`, which GNU date on Ubuntu 24.04 reads as a timezone rather than a relative time. The timestamps are now computed from the epoch, which every supported version reads the same way.
+
 ## [0.1.2] - 2026-09-12
 
 ### Fixed

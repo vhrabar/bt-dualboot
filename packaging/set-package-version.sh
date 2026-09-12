@@ -107,7 +107,9 @@ entry_date() {
         echo "::warning::CHANGELOG.md [$want] has no date; using today's, so this build is not reproducible." >&2
         d="$(date -u +%F)"
     fi
-    LC_ALL=C date -u -d "$d 00:00:00 +${offset} minutes" "+$fmt"
+    local epoch
+    epoch="$(LC_ALL=C date -u -d "$d 00:00:00" +%s)"
+    LC_ALL=C date -u -d "@$((epoch + offset * 60))" "+$fmt"
 }
 
 # Every released version heading in CHANGELOG.md, in file order (newest first).

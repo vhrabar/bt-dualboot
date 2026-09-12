@@ -1,6 +1,6 @@
 [project]
 name = "bt-dualboot-sync"
-version = "0.1.2"
+version = "0.1.3"
 description = "Sync Bluetooth for dualboot Linux and Windows"
 readme = "bt_dualboot/README.md"
 license = "MIT"
