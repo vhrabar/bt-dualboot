@@ -9,3 +9,7 @@ dist/
 # IDE files
 .vscode/
 .idea/
+
+# Debian packaging files
+packaging/debian/changelog
+packaging/debian/*.lintian-overrides
