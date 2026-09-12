@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Distribution packages, built from the release tarball so every channel ships the same code as PyPI:
+  - Ubuntu, from [`ppa:vhrabar/tools`](https://launchpad.net/~vhrabar/+archive/ubuntu/tools) for 25.10, 26.04 and 26.10.
+  - Fedora, from [`copr:vhrabar/bt-dualboot-sync`](https://copr.fedorainfracloud.org/coprs/vhrabar/bt-dualboot-sync/) for 43, 44, 45 and rawhide.
+  - Arch, as [`bt-dualboot-sync`](https://aur.archlinux.org/packages/bt-dualboot-sync) in the AUR. It provides and conflicts with `bt-dualboot` and `bt-dualboot-ng`, which install the same command.
+- A `bt-dualboot(1)` man page, shipped by all three distribution packages.
+
 ## [0.1.0] - 2026-09-12
 
 ### Added
