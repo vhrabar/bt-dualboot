@@ -1,0 +1,36 @@
+Source: bt-dualboot-sync
+Section: utils
+Maintainer: Vedran Hrabar <vedran.hrabar@outlook.com>
+Build-Depends:
+ debhelper-compat (= 13),
+ dh-python,
+ pybuild-plugin-pyproject,
+ python3-all,
+ python3-hatchling,
+Standards-Version: 4.7.3
+Homepage: https://github.com/vhrabar/bt-dualboot
+Vcs-Git: https://github.com/vhrabar/bt-dualboot.git
+Vcs-Browser: https://github.com/vhrabar/bt-dualboot
+X-Python3-Version: >= 3.11
+Testsuite: autopkgtest-pkg-python
+
+Package: bt-dualboot-sync
+Architecture: all
+Depends:
+ ${misc:Depends},
+ ${python3:Depends},
+ chntpw,
+Description: sync Bluetooth pairing keys from Linux to Windows
+ A Bluetooth device paired under both Linux and Windows stores a different
+ pairing key in each system, and the device keeps only the most recent one.
+ On a dualboot machine that means re-pairing the device after every reboot
+ into the other system.
+ .
+ bt-dualboot copies the pairing keys Linux holds in /var/lib/bluetooth into
+ the Windows registry hive on a mounted Windows partition, so both systems
+ authenticate with the same key and the device works in either one without
+ being re-paired.
+ .
+ The Windows partition has to be mounted with write access. The registry is
+ edited through reged(8) from the chntpw package, which preserves the size of
+ the hive, and the hive is backed up before it is written to.

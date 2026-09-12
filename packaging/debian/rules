@@ -1,0 +1,9 @@
+#!/usr/bin/make -f
+
+export PYBUILD_NAME=bt-dualboot-sync
+
+%:
+	dh $@ --with python3 --buildsystem=pybuild
+
+execute_after_dh_auto_install:
+	rm -f debian/bt-dualboot-sync/usr/lib/python3*/dist-packages/bt_dualboot/README.md

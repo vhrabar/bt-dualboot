@@ -1,0 +1,150 @@
+.TH BT\-DUALBOOT 1 "2026\-09\-12" "bt\-dualboot\-sync 0.1.0" "User Commands"
+.SH NAME
+bt\-dualboot \- sync Bluetooth pairing keys from Linux to Windows
+.SH SYNOPSIS
+.B bt\-dualboot
+.RB [ \-h ]
+.RB [ \-\-version ]
+.RB [ \-l ]
+.RB [ \-\-list\-win\-mounts ]
+.RB [ \-\-bot ]
+.RB [ \-\-dry\-run ]
+.RB [ \-\-win
+.IR MOUNT ]
+.RB [ \-\-sync
+.IR MAC .\|.\|.\&]
+.RB [ \-\-sync\-all ]
+.RB [ \-n ]
+.RB [ \-b
+.RI [ path ]]
+.SH DESCRIPTION
+A Bluetooth device paired under both Linux and Windows stores a different
+pairing key in each system, and the device keeps only the most recent one.
+On a dualboot machine this means re\-pairing the device after every reboot
+into the other system.
+.PP
+.B bt\-dualboot
+copies the pairing keys Linux holds in
+.I /var/lib/bluetooth
+into the Windows registry hive on a mounted Windows partition, so both systems
+authenticate with the same key and the device works in either without being
+re\-paired.
+.PP
+Devices must already be paired in both systems: Windows stores a device only
+when it has been paired there, and this tool updates existing entries rather
+than creating them.
+.PP
+The Windows partition must be mounted with write access, and the registry is
+edited through
+.BR reged (8)
+from the chntpw package, which preserves the size of the hive.
+.SH OPTIONS
+.TP
+.B \-h, \-\-help
+Show a help message and exit.
+.TP
+.B \-\-version
+Print the version and exit.
+.SS List resources
+.TP
+.B \-l, \-\-list
+List Bluetooth devices, grouped by whether they work in both systems, are
+available for sync, still have to be paired in Windows, or have no pairing key
+at all. Requires root.
+.TP
+.B \-\-list\-win\-mounts
+List mounted Windows locations that were found.
+.TP
+.B \-\-bot
+Emit parsable output for scripts. Supported together with
+.BR \-\-list .
+.SS Sync keys
+.TP
+.B \-\-dry\-run
+Print the actions that would be taken without performing them.
+.TP
+.BI \-\-win " MOUNT"
+Use
+.I MOUNT
+as the Windows mount point instead of probing for one. Needed only when the
+probe finds no Windows installation or finds more than one.
+.TP
+.BI \-\-sync " MAC" .\|.\|.\&
+Sync the devices with the given MAC addresses. Addresses are case insensitive
+and separated by spaces. Requires root.
+.TP
+.B \-\-sync\-all
+Sync every paired device that is available for sync. Requires root.
+.SS Backup of the Windows registry
+.TP
+.B \-b, \-\-backup " [path]"
+Back up the Windows registry hive before writing to it. Without
+.I path
+the backup is written to
+.IR /var/backup/bt\-dualboot .
+.TP
+.B \-n, \-\-no\-backup
+Write to the registry without taking a backup.
+.PP
+One of
+.B \-\-backup
+or
+.B \-\-no\-backup
+has to be given together with
+.B \-\-sync
+or
+.BR \-\-sync\-all ,
+so that the choice of backup strategy is always deliberate.
+.SH FILES
+.TP
+.I /var/lib/bluetooth
+Linux Bluetooth configuration, holding the pairing keys that are read.
+.TP
+.I Windows/System32/config/SYSTEM
+Registry hive on the mounted Windows partition that is written to.
+.TP
+.I /var/backup/bt\-dualboot
+Default directory for registry backups.
+.SH EXIT STATUS
+.TP
+.B 0
+The requested operation completed.
+.TP
+.B 1
+The command line was rejected, a required resource was missing, or the sync
+failed. Nothing was changed in the last case.
+.SH EXAMPLES
+List the devices and their sync status:
+.PP
+.RS 4
+.nf
+sudo bt\-dualboot \-l
+.fi
+.RE
+.PP
+Preview what syncing everything would do:
+.PP
+.RS 4
+.nf
+sudo bt\-dualboot \-\-sync\-all \-\-dry\-run
+.fi
+.RE
+.PP
+Sync a single device, backing up the registry first:
+.PP
+.RS 4
+.nf
+sudo bt\-dualboot \-\-sync C2:9E:1D:E2:3D:A5 \-\-backup
+.fi
+.RE
+.SH SEE ALSO
+.BR reged (8),
+.BR chntpw (8),
+.BR bluetoothctl (1)
+.SH BUGS
+Report bugs at
+.UR https://github.com/vhrabar/bt\-dualboot/issues
+.UE .
+.SH AUTHOR
+Originally written by Konstantin Ivanov and contributors, maintained and developed in this fork by
+Vedran Hrabar.
