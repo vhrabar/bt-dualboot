@@ -1,6 +1,6 @@
 [project]
 name = "bt-dualboot-sync"
-version = "0.1.1"
+version = "0.1.2"
 description = "Sync Bluetooth for dualboot Linux and Windows"
 readme = "bt_dualboot/README.md"
 license = "MIT"
@@ -21,7 +21,6 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
-    "Programming Language :: Python :: 3.15",
     "Topic :: Home Automation",
     "Topic :: Multimedia",
     "Topic :: System",

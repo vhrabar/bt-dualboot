@@ -96,7 +96,7 @@ render_changelog() {
 # generated entries are identical in CI, on COPR and locally. Nothing is
 # committed back, so a clock-derived date would make every build differ.
 entry_date() {
-    local want=$1 fmt=$2 d
+    local want=$1 fmt=$2 offset=${3:-0} d
     d="$(awk -v want="$want" '
         $0 ~ "^##[ \t]+\\[?" want "\\]?([ \t]|$)" {
             if (match($0, /[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/))
@@ -107,7 +107,7 @@ entry_date() {
         echo "::warning::CHANGELOG.md [$want] has no date; using today's, so this build is not reproducible." >&2
         d="$(date -u +%F)"
     fi
-    LC_ALL=C date -u -d "$d 00:00:00" "+$fmt"
+    LC_ALL=C date -u -d "$d 00:00:00 +${offset} minutes" "+$fmt"
 }
 
 # Every released version heading in CHANGELOG.md, in file order (newest first).
@@ -155,35 +155,48 @@ fi
 # project's and no entry is ever written by hand.
 
 deb_entry() {
-    local v=$1 body=$2
+    local v=$1 body=$2 offset=${3:-0}
     printf 'bt-dualboot-sync (%s-1) unstable; urgency=medium\n\n' "$v"
     printf '%s\n\n' "$body"
     printf ' -- %s <%s>  %s\n' "$name" "$mail" \
-        "$(entry_date "$v" '%a, %d %b %Y %H:%M:%S +0000')"
+        "$(entry_date "$v" '%a, %d %b %Y %H:%M:%S +0000' "$offset")"
 }
 
-tmp="$(mktemp)"
-entries=0
-
-# Before the release workflow promotes [Unreleased] there is no [$version]
-# section, so lead with one rendered from [Unreleased].
-if [ "$section" = "Unreleased" ]; then
-    deb_entry "$version" "$deb_body" > "$tmp"
-    entries=1
-fi
-
+# Which sections actually render, so the entries can be numbered before any is
+# written: the newest needs the largest time offset.
+renderable=""
 while read -r v; do
     [ -n "$v" ] || continue
-    body="$(render_changelog "$v" deb)" || continue
-    [ "$entries" -gt 0 ] && printf '\n' >> "$tmp"
-    deb_entry "$v" "$body" >> "$tmp"
-    entries=$((entries + 1))
+    render_changelog "$v" deb >/dev/null 2>&1 || continue
+    renderable="$renderable $v"
 done <<EOF
 $(list_versions)
 EOF
 
+total=0
+for v in $renderable; do total=$((total + 1)); done
+# Before the release workflow promotes [Unreleased] there is no [$version]
+# section, so lead with one rendered from [Unreleased].
+[ "$section" = "Unreleased" ] && total=$((total + 1))
+[ "$total" -eq 0 ] && total=1
+
+tmp="$(mktemp)"
+entries=0
+
+if [ "$section" = "Unreleased" ]; then
+    deb_entry "$version" "$deb_body" "$((total - 1))" > "$tmp"
+    entries=1
+fi
+
+for v in $renderable; do
+    body="$(render_changelog "$v" deb)"
+    [ "$entries" -gt 0 ] && printf '\n' >> "$tmp"
+    deb_entry "$v" "$body" "$((total - 1 - entries))" >> "$tmp"
+    entries=$((entries + 1))
+done
+
 if [ "$entries" -eq 0 ]; then
-    deb_entry "$version" "$deb_body" > "$tmp"
+    deb_entry "$version" "$deb_body" 0 > "$tmp"
     entries=1
 fi
 

@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- The Ubuntu packages build again: the `Programming Language :: Python :: 3.15` classifier was rejected by 25.10, whose `trove-classifiers` predates that version, so it is dropped until 3.15 is released.
+- Successive releases cut on the same day no longer share a timestamp in the generated `debian/changelog`, which dpkg requires to be strictly ordered.
+
 ## [0.1.1] - 2026-09-12
 
 ### Added
