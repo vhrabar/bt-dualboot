@@ -3,7 +3,7 @@ name: Release
 # Fires automatically whenever a merge to main bumps pyproject.toml's version:
 #
 #   read VERSION from pyproject.toml -> promote CHANGELOG.md's [Unreleased] section
-#   -> sync bt_dualboot/__meta__.py -> commit + tag on main -> publish the release
+#   -> sync bt_dualboot/__meta__.py -> commit + tag on main -> DRAFT the release
 #   -> sync the promotion back onto dev
 
 
@@ -110,7 +110,7 @@ jobs:
           git push origin "refs/tags/${TAG}"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Publish the release from CHANGELOG.md
+      - name: Draft the release from CHANGELOG.md
         if: steps.gate.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -120,13 +120,13 @@ jobs:
           set -euo pipefail
           uvx --from python-kacl==0.7.3 kacl-cli get "$VERSION" --no-header > /tmp/notes.md
           gh release create "$TAG" \
+            --draft \
             --title "$TAG" \
             --notes-file /tmp/notes.md \
             --target "${{ steps.commit.outputs.sha }}"
+          url="$(gh release view "$TAG" --json url --jq .url)"
           {
-            echo "### Published \`${TAG}\`"
-            echo ""
-            echo "$(gh release view "$TAG" --json url --jq .url)"
+            echo "### Draft release \`${TAG}\` is ready"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Sync the release commit back to dev
