@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-09-12
+
 ### Fixed
 
 - The Ubuntu packages build again: the `Programming Language :: Python :: 3.15` classifier was rejected by 25.10, whose `trove-classifiers` predates that version, so it is dropped until 3.15 is released.
@@ -44,6 +46,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - The "paired for multiple BT-adapters" warnings print the device MACs again; they were literal text because of a missing f-string prefix. Fixed upstream by [@J3RN](https://github.com/J3RN) in [x2es/bt-dualboot#9](https://github.com/x2es/bt-dualboot/pull/9); never released.
 - `raise ... from err` on the device-not-found path, so the underlying error is no longer reported as an unexpected exception during handling.
 
-[Unreleased]: https://github.com/vhrabar/bt-dualboot/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/vhrabar/bt-dualboot/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/vhrabar/bt-dualboot/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/vhrabar/bt-dualboot/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/vhrabar/bt-dualboot/releases/tag/v0.1.0
