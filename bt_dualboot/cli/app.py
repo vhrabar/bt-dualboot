@@ -24,9 +24,10 @@ DEFAULT_BACKUP_PATH = os.path.join(os.sep, "var", "backup", "bt-dualboot")
 
 def mac_str(argument_value):
     value = argument_value.upper()
-    if re.match("^[A-F0-9:]+$", value) is None:
+    if re.fullmatch(r"(?:[A-F0-9]{2}:){5}[A-F0-9]{2}", value) is None:
         raise ArgumentTypeError(
-            "unexpected characters! Allowed letters A-F, digits 0-9 and colon, use space as separator."
+            "MAC address must have the format XX:XX:XX:XX:XX:XX "
+            "(hex digits 0-9, A-F); use spaces to separate addresses."
         )
     return value
 
@@ -228,7 +229,8 @@ class Application:
         """
         with no_device_error_handler():
             self._sync_manager().push(macs, dry_run=self.is_dry_run())
-            print(f"synced {', '.join(macs)} successfully")
+            if not self.is_dry_run():
+                print(f"synced {', '.join(macs)} successfully")
 
     def sync_all(self):
         sync_manager = self._sync_manager()

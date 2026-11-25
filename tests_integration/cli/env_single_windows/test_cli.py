@@ -374,6 +374,14 @@ class TestBackupSynonyms(BaseTestSync):
 
 
 class TestSync(BaseTestSync):
+    def assert_sync_output(self, stdout, macs):
+        macs_text = ", ".join(macs)
+        if self.is_dry_run():
+            assert f"> DRY RUN: push devices {macs_text}" in stdout
+            assert "successfully" not in stdout
+        else:
+            assert f"synced {macs_text} successfully" in stdout
+
     def test_require_backup(self, suite_snapshot):
         """should die with backup options suggestion"""
         cmd_opts = self.build_opts(["--sync", MAC_NEED_SYNC_2], unset_backup=True)
@@ -397,8 +405,7 @@ class TestSync(BaseTestSync):
             fake_time = backup_context["fake_time"]
             for res in snapshot_cli(suite_snapshot, cmd_opts, sudo=True, fake_time=fake_time):
                 retcode, stdout = itemgetter("retcode", "stdout")(res)
-                expected_output = f"synced {MAC_NEED_SYNC_2} successfully"
-                assert stdout.find(expected_output) >= 0
+                self.assert_sync_output(stdout, [MAC_NEED_SYNC_2])
                 assert retcode == 0
 
         self.assert_after([MAC_NEED_SYNC_1])
@@ -413,8 +420,7 @@ class TestSync(BaseTestSync):
             fake_time = backup_context["fake_time"]
             for res in snapshot_cli(suite_snapshot, cmd_opts, sudo=True, fake_time=fake_time):
                 retcode, stdout = itemgetter("retcode", "stdout")(res)
-                expected_output = f"synced {MAC_NEED_SYNC_2} successfully"
-                assert stdout.find(expected_output) >= 0
+                self.assert_sync_output(stdout, [MAC_NEED_SYNC_2])
                 assert retcode == 0
 
         self.assert_after([MAC_NEED_SYNC_1])
@@ -424,8 +430,7 @@ class TestSync(BaseTestSync):
         cmd_opts = self.build_opts(["--sync", MAC_NEED_SYNC_2])
         for res in snapshot_cli(suite_snapshot, cmd_opts, sudo=True):
             retcode, stdout = itemgetter("retcode", "stdout")(res)
-            expected_output = f"synced {MAC_NEED_SYNC_2} successfully"
-            assert stdout.find(expected_output) >= 0
+            self.assert_sync_output(stdout, [MAC_NEED_SYNC_2])
             assert retcode == 0
 
         self.assert_after([MAC_NEED_SYNC_1])
@@ -436,8 +441,7 @@ class TestSync(BaseTestSync):
 
         for res in snapshot_cli(suite_snapshot, cmd_opts, sudo=True):
             retcode, stdout = itemgetter("retcode", "stdout")(res)
-            expected_output = f"synced {MAC_NEED_SYNC_2}, {MAC_NEED_SYNC_1} successfully"
-            assert stdout.find(expected_output) >= 0
+            self.assert_sync_output(stdout, [MAC_NEED_SYNC_2, MAC_NEED_SYNC_1])
             assert retcode == 0
 
         self.assert_after(["NONE"])
@@ -490,9 +494,17 @@ class TestSync(BaseTestSync):
         cmd_opts = self.build_opts(["--sync", f"{MAC_NEED_SYNC_1},{MAC_NEED_SYNC_2}"])
         for res in snapshot_cli(suite_snapshot, cmd_opts, sudo=True):
             retcode, stderr = itemgetter("retcode", "stderr")(res)
-            expected_error = "error: argument --sync: unexpected characters! Allowed letters A-F, digits 0-9 and colon, use space as separator."
+            expected_error = "error: argument --sync: MAC address must have the format XX:XX:XX:XX:XX:XX"
             assert stderr.find(expected_error) >= 0
             assert retcode == 2
+
+        self.assert_nothing_changed()
+
+    def test_incomplete_mac(self, suite_snapshot):
+        cmd_opts = self.build_opts(["--sync", "ABC"])
+        for res in snapshot_cli(suite_snapshot, cmd_opts, sudo=True):
+            assert res["retcode"] == 2
+            assert "MAC address must have the format XX:XX:XX:XX:XX:XX" in res["stderr"]
 
         self.assert_nothing_changed()
 
@@ -501,8 +513,7 @@ class TestSync(BaseTestSync):
 
         for res in snapshot_cli(suite_snapshot, cmd_opts, sudo=True):
             retcode, stdout = itemgetter("retcode", "stdout")(res)
-            expected_output = f"synced {MAC_NEED_SYNC_2}, {MAC_NEED_SYNC_1} successfully"
-            assert stdout.find(expected_output) >= 0
+            self.assert_sync_output(stdout, [MAC_NEED_SYNC_2, MAC_NEED_SYNC_1])
             assert retcode == 0
 
         self.assert_after(["NONE"])
@@ -594,7 +605,7 @@ class TestSyncAll(BaseTestSync):
 
     # --sync-all --sync MAC     => Error
     def test_sync_all_and_sync(self, suite_snapshot):
-        cmd_opts = self.build_opts(["--sync-all", "--sync", "123"])
+        cmd_opts = self.build_opts(["--sync-all", "--sync", MAC_NEED_SYNC_1])
         for res in snapshot_cli(suite_snapshot, cmd_opts, sudo=True):
             assert res["retcode"] == 2
 

@@ -11,6 +11,12 @@ ERROR:  Missing dependency `reged`. Install `chntpw` package first.
 
     Ubuntu/Debian/Mint:
     $ sudo apt install chntpw
+
+    Fedora:
+    $ sudo dnf install chntpw
+
+    Arch Linux:
+    $ sudo pacman -S chntpw
     
 
 -------------------------------------------------------------

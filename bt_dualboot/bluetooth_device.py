@@ -77,9 +77,8 @@ class BluetoothDevice:
         return hex_string_to_reg_hex_b(hex_string)
 
     def ediv_to_dword(self):
-        # dword alias hex(4) type -> 32 bit -> 4 byte in little endian
-        # Microsoft says it should be little endian: https://learn.microsoft.com/en-us/windows/win32/sysinfo/registry-value-types
-        # they are liars
+        # .reg dword: text represents the numeric hexadecimal value, not the
+        # little-endian byte sequence used to store REG_DWORD in the hive.
         dword_val = struct.pack(">I", self.ediv).hex()
         return f"dword:{dword_val}"
 
