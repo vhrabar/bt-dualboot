@@ -1,7 +1,8 @@
-from pytest import fixture
+from pytest import fixture, raises
 import os
 
 from .shared_fixtures import *
+from bt_dualboot.windows_registry import RegistryError
 
 #
 # NOTE: helper `wp()` imported from .shared_fixtures
@@ -78,3 +79,46 @@ class TestImport:
         assert os.path.getsize(sample_reg_file_path) == os.path.getsize(
             registry_file_path
         ), "Hive file size remain unchanged"
+
+
+class TestRegistryError:
+    """reged failures raise RegistryError instead of crashing or passing silently"""
+
+    sample_reg_key = r"ControlSet001\Control\Bluetooth\Audio\Hfp"
+    for_import = {wp(r"ControlSet001\Control\Bluetooth\Audio\Hfp\HandsFree"): {'"Custom"': "dword:00000120"}}
+
+    def test_export_missing_hive(self, tmpdir):
+        registry = WindowsRegistry(str(tmpdir / "missing_SYSTEM"))
+        with raises(RegistryError, match="Couldn't read the Windows registry"):
+            registry.export(self.sample_reg_key)
+
+    def test_export_corrupt_hive(self, tmpdir):
+        corrupt = tmpdir / "corrupt_SYSTEM"
+        corrupt.write_bytes(b"not a registry hive")
+        with raises(RegistryError, match="Couldn't read the Windows registry"):
+            WindowsRegistry(str(corrupt)).export(self.sample_reg_key)
+
+    def test_import_missing_hive(self, tmpdir):
+        registry = WindowsRegistry(str(tmpdir / "missing_SYSTEM"))
+        with raises(RegistryError, match="doesn't exist"):
+            registry.import_dict(self.for_import)
+
+    def test_import_read_only_hive(self, windows_registry, registry_file_path):
+        """reged exits 2 ("OK") on a read-only hive without saving anything"""
+        with open(registry_file_path, "rb") as f:
+            before = f.read()
+        os.chmod(registry_file_path, 0o400)
+        try:
+            with raises(RegistryError, match="is read-only"):
+                windows_registry.import_dict(self.for_import)
+        finally:
+            os.chmod(registry_file_path, 0o600)
+
+        with open(registry_file_path, "rb") as f:
+            assert f.read() == before, "hive must stay unchanged"
+
+    def test_import_corrupt_hive(self, tmpdir):
+        corrupt = tmpdir / "corrupt_SYSTEM"
+        corrupt.write_bytes(b"not a registry hive")
+        with raises(RegistryError, match="Couldn't write the Windows registry"):
+            WindowsRegistry(str(corrupt)).import_dict(self.for_import)

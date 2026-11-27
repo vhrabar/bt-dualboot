@@ -8,6 +8,10 @@ from tempfile import TemporaryDirectory
 WINDOWS10_REGISTRY_PATH = os.path.join("Windows", "System32", "config", "SYSTEM")
 
 
+class RegistryError(Exception):
+    """The Windows registry hive couldn't be read or written"""
+
+
 def is_debug():
     return os.environ.get("DEBUG") == "1"
 
@@ -95,7 +99,14 @@ class WindowsRegistry:
                 reg_key,
                 exported_reg_filename,
             ]
-            subprocess.run(export_cmd, **subprocess_output_opts())
+            res = subprocess.run(export_cmd, **subprocess_output_opts())
+
+            # reged exits 0 even when it fails to write the output file
+            if res.returncode != 0 or not os.path.exists(exported_reg_filename):
+                raise RegistryError(
+                    f"Couldn't read the Windows registry {self._registry_file()} "
+                    f"(reged exit code {res.returncode})."
+                )
 
             with open(exported_reg_filename) as f:
                 # skip first line "Windows Registry Editor Version 5.00" for ConfigParser compability
@@ -152,6 +163,13 @@ class WindowsRegistry:
                 implies `-N -E` arguments to `reged`
         """
 
+        if not os.path.isfile(self._registry_file()):
+            raise RegistryError(f"The Windows registry {self._registry_file()} doesn't exist.")
+
+        # reged reports success on a read-only hive but saves nothing
+        if not os.access(self._registry_file(), os.W_OK):
+            raise RegistryError(f"The Windows registry {self._registry_file()} is read-only.")
+
         with TemporaryDirectory() as temp_dir_name:
             tmp_filename = os.path.join(temp_dir_name, "for_import.reg")
 
@@ -197,7 +215,9 @@ class WindowsRegistry:
 
             os.unlink(tmp_filename)
 
+            # reged -I exits 2 when the hive was saved
             if res.returncode != 2:
-                raise RuntimeError(
-                    "Data couldn't be saved! See reged output for details using DEBUG=1. Try .import_dict(safe=False)"
+                raise RegistryError(
+                    f"Couldn't write the Windows registry {self._registry_file()} "
+                    f"(reged exit code {res.returncode})."
                 )
