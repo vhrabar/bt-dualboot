@@ -39,6 +39,12 @@ def require_chntpw_package():
 
     Ubuntu/Debian/Mint:
     $ sudo apt install chntpw
+
+    Fedora:
+    $ sudo dnf install chntpw
+
+    Arch Linux:
+    $ sudo pacman -S chntpw
     """,
     )
 

@@ -33,12 +33,12 @@ concurrency:
 
 env:
   PACKAGE: bt-dualboot-sync
-  DEB_IMAGES: ubuntu:25.10 ubuntu:26.04 ubuntu 26:10
+  PPA_SERIES: noble resolute stonking tenacious
 
 jobs:
   version:
     name: Resolve version
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.ver.outputs.version }}
       tag: ${{ steps.ver.outputs.tag }}
@@ -91,11 +91,11 @@ jobs:
   verify-deb:
     name: Verify deb (${{ matrix.image }})
     needs: [version]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        image: ["ubuntu:25.10", "ubuntu:26.04"]
+        image: ["ubuntu:26.04", "ubuntu:26.10"]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -142,7 +142,7 @@ jobs:
   verify-rpm:
     name: Verify rpm
     needs: [version]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with:
@@ -181,7 +181,7 @@ jobs:
   verify-arch:
     name: Verify Arch package
     needs: [version]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with:
@@ -245,7 +245,7 @@ jobs:
     name: Publish to Launchpad PPA
     needs: [version, verify-deb, verify-rpm, verify-arch]
     if: needs.version.outputs.publish == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     environment:
       name: launchpad-ppa
       url: https://launchpad.net/~vhrabar/+archive/ubuntu/tools
@@ -266,7 +266,11 @@ jobs:
           DEBEMAIL: "vedran.hrabar@outlook.com"
           DEBFULLNAME: "Vedran Hrabar"
           DEBIAN_DIR: "packaging/debian"
-          SERIES: "questing resolute stonking"
+          SERIES: ${{ env.PPA_SERIES }}
+          # Every upload carries the .orig.tar.gz. With "auto" only the first series
+          # did, so a rejected first upload made Launchpad reject all the others with
+          # "Unable to find bt-dualboot-sync_X.orig.tar.gz".
+          INCLUDE_ORIG: "yes"
           KEEP_CHANGELOG: "1"
           TARBALL: "https://github.com/${{ github.repository }}/archive/refs/tags/${{ needs.version.outputs.tag }}.tar.gz"
 

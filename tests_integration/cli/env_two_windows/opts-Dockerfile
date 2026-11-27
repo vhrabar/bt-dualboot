@@ -1,0 +1,5 @@
+partitions="$PROJECT_DIR/tests_integration/cli/env_two_windows/partitions"
+run_args=(
+  --mount "type=bind,source=$partitions/windows-drive,target=/media/user/Windows Drive,readonly"
+  --mount "type=bind,source=$partitions/windows-11,target=/mnt/windows11,readonly"
+)

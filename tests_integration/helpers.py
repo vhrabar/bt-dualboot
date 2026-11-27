@@ -1,10 +1,13 @@
 import os
+import re
 import subprocess
 import sys
 from contextlib import contextmanager
 from operator import itemgetter
 
 from pytest import fixture
+
+from bt_dualboot import __version__
 
 
 @fixture(scope="session")
@@ -98,7 +101,7 @@ def cli_result(cmd_opts, sudo=False, fake_time=None, launcher=None):
         cmd = ["sh", "-c", cmd]
 
     if sudo is True:
-        cmd.insert(0, "sudo")
+        cmd = ["sudo", "PYTHONDONTWRITEBYTECODE=1", *cmd]
 
     res = subprocess.run(
         cmd,
@@ -155,6 +158,13 @@ def snapshot_cli_result(snapshot_tool, cmd_opts, sudo=False, context=None, **kwr
         output.insert(0, f"CONTEXT: {context}")
 
     output = "\n".join(output)
+
+    # NOTE: the app version appears in --help and --version output; mask it so a
+    # release bump doesn't invalidate snapshots (test_version asserts the real value)
+    output = output.replace(__version__, "{VERSION}")
+    # NOTE: pytest's tmp_path embeds the user running the tests (the container user is
+    # named after the host user, e.g. `runner` on GitHub) and a per-session counter
+    output = re.sub(r"pytest-of-[^/]+/pytest-\d+", "pytest-of-{USER}/pytest-{N}", output)
 
     try:
         yield res

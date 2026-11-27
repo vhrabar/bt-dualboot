@@ -3,7 +3,6 @@ RETCODE=0
 STDOUT:
 =======
 > DRY RUN: push devices C2:9E:1D:E2:3D:A5
-synced C2:9E:1D:E2:3D:A5 successfully
 
 -------------------------------------------------------------
 STDERR:

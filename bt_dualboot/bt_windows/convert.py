@@ -76,17 +76,16 @@ def int_from_hex_b_reg(hex_b_string_reg):
 
 
 def int_from_dword_reg(dword_string_reg):
-    """Convert hex b string from Windows registry format
+    """Convert a dword value from Windows registry text format
     Args:
-        hex_b_string_reg (str): kind of 'hex(b):34,f5,ae,1f,df,cd,00,00'
+        dword_string_reg (str): kind of 'dword:00001234'
 
     Returns:
         int
     """
     _, value = dword_string_reg.split(":")
-    # it is supposed to be little endian
-    # see: https://learn.microsoft.com/en-us/windows/win32/sysinfo/registry-value-types
-    # however, Microsoft is lying and it is in fact big endian
+    # .reg dword: text represents the numeric hexadecimal value, not the
+    # little-endian byte sequence used to store REG_DWORD in the hive.
     return int.from_bytes(bytes.fromhex(value), "big")
 
 

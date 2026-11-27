@@ -2,8 +2,8 @@ CONTEXT: [env_single_windows] valid environment with single windows mounted
 RETCODE=0
 STDOUT:
 =======
-syncing B8:94:A5:FD:F1:0A DEV-2-02-Name
 syncing C2:9E:1D:E2:3D:A5 DEV-1-03-Name
+syncing B8:94:A5:FD:F1:0A DEV-2-02-Name
 ...done
 
 -------------------------------------------------------------

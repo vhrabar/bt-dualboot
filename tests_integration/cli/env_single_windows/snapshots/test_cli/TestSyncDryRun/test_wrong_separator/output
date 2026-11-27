@@ -9,6 +9,6 @@ STDERR:
 usage: bt-dualboot [-h] [--version] [-l] [--list-win-mounts] [--bot]
                    [--dry-run] [--win MOUNT] [--sync MAC [MAC ...]]
                    [--sync-all] [-n] [-b [path]]
-bt-dualboot: error: argument --sync: unexpected characters! Allowed letters A-F, digits 0-9 and colon, use space as separator.
+bt-dualboot: error: argument --sync: MAC address must have the format XX:XX:XX:XX:XX:XX (hex digits 0-9, A-F); use spaces to separate addresses.
 
 -------------------------------------------------------------

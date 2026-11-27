@@ -6,7 +6,7 @@ usage: bt-dualboot [-h] [--version] [-l] [--list-win-mounts] [--bot]
                    [--dry-run] [--win MOUNT] [--sync MAC [MAC ...]]
                    [--sync-all] [-n] [-b [path]]
 
-Sync bluetooth keys from Linux to Windows (v1.0.1)
+Sync bluetooth keys from Linux to Windows (v{VERSION})
 
 options:
   -h, --help            show this help message and exit
@@ -38,6 +38,12 @@ ERROR:  Missing dependency `reged`. Install `chntpw` package first.
 
     Ubuntu/Debian/Mint:
     $ sudo apt install chntpw
+
+    Fedora:
+    $ sudo dnf install chntpw
+
+    Arch Linux:
+    $ sudo pacman -S chntpw
     
 
 -------------------------------------------------------------

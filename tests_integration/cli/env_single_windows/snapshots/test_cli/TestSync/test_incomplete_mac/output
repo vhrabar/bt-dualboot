@@ -1,0 +1,14 @@
+CONTEXT: [env_single_windows] valid environment with single windows mounted
+RETCODE=2
+STDOUT:
+=======
+
+-------------------------------------------------------------
+STDERR:
+=======
+usage: bt-dualboot [-h] [--version] [-l] [--list-win-mounts] [--bot]
+                   [--dry-run] [--win MOUNT] [--sync MAC [MAC ...]]
+                   [--sync-all] [-n] [-b [path]]
+bt-dualboot: error: argument --sync: MAC address must have the format XX:XX:XX:XX:XX:XX (hex digits 0-9, A-F); use spaces to separate addresses.
+
+-------------------------------------------------------------

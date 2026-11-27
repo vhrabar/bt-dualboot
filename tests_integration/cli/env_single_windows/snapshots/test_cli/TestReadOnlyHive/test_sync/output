@@ -1,0 +1,19 @@
+CONTEXT: [env_single_windows] valid environment with single windows mounted
+RETCODE=1
+STDOUT:
+=======
+
+-------------------------------------------------------------
+STDERR:
+=======
+ERROR: The Windows registry /mnt/win-ro/Windows/System32/config/SYSTEM is read-only.
+Nothing changed.
+
+Possible causes:
+  - the Windows partition is mounted read-only: remount it read-write
+  - Windows Fast Startup or hibernation is on, so Linux mounts the partition read-only:
+    turn off Fast Startup in Windows and shut Windows down fully (not restart)
+
+Run with DEBUG=1 to see the reged output and the traceback.
+
+-------------------------------------------------------------

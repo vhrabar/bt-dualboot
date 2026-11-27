@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Devices are listed in a stable order (sorted by adapter and device MAC) by `-l` and `--sync-all`, instead of the order the filesystem happens to return them in.
+- `--list-win-mounts` lists every Windows partition it finds and exits successfully when there are none or several, which is when it is most useful. It prints "No Windows partitions found" instead of an empty list. `-l`, `--sync`, `--sync-all` and `--backup` still need exactly one Windows partition, or `--win`.
+- Registry errors are reported as a short message instead of a Python traceback: what failed, that nothing was changed, and the usual causes (a read-only mount, or Windows Fast Startup or hibernation). The exit status is 1. `DEBUG=1` still shows the traceback.
+- `--sync` rejects a MAC address that is not in the full `XX:XX:XX:XX:XX:XX` form, with a message saying so.
+- The hint for a missing `reged` also gives the `dnf` and `pacman` commands for installing `chntpw`.
+- The Ubuntu packages are published for 26.04 and 26.10. 25.10 has reached its end of life, and Launchpad no longer accepts uploads for it.
+
+### Fixed
+
+- `--sync-all` writes every device. Classic devices paired with the same Bluetooth adapter share one registry key, and each one overwrote the previous, so only the last device per adapter was saved, while the output still said `done`.
+- BLE devices paired with LE Secure Connections now count as synced once pushed. BlueZ stores `EDiv=0` and `Rand=0` for them, which were read as missing, so these devices stayed under "Needs sync" and were rewritten on every run.
+- BLE devices with a long-term key that are not paired in Windows are listed under "Have to be paired in Windows" instead of "Missing pairing key".
+- A device name containing `%` (such as `JBL 100% Bass`) no longer crashes the tool, and neither does a device without a `Name`: it is shown by its alias, or by its MAC address when it has no alias either.
+- Windows partitions mounted at a path with a space, such as the common `/media/user/Windows Drive`, or with characters like `[ ]`, are found by auto-discovery and `--list-win-mounts`.
+- A write to a read-only Windows partition is reported as an error. `reged` reports success in that case while saving nothing, so the tool claimed devices were synced when they were not.
+- `--sync --dry-run` no longer prints `synced … successfully`.
+- The Ubuntu packages reach the PPA. Launchpad rejected every 0.1.x upload because only the first series' upload carried the source tarball, and that series was no longer accepting uploads.
+- The man page shows the release version. Packages built from the release tarball (Ubuntu and Arch) showed 0.1.0.
+
 ## [0.1.3] - 2026-09-12
 
 ### Fixed

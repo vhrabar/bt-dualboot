@@ -52,6 +52,12 @@ DEFAULT_RUN_OPTS="--mount type=bind,source=$PROJECT_DIR,target=/src --workdir /s
 
 shopt -s globstar nullglob dotglob
 
+TTY_OPTS=""
+[ -t 0 ] && [ -t 1 ] && TTY_OPTS="-it"
+
+failed=()
+ran=0
+
 [ ! -z "$ONLY_ENV" ] && echo "! ENV filter: $ONLY_ENV"
 
 for env_launcher in ./**/env_*/start; do
@@ -75,6 +81,7 @@ for env_launcher in ./**/env_*/start; do
     flags=""
     require_image=""
     run_opts=$DEFAULT_RUN_OPTS
+    run_args=()
     opts_file="$env_dir/opts-$dockerfile"
     [ -e "$opts_file" ] && . $opts_file
 
@@ -109,32 +116,57 @@ for env_launcher in ./**/env_*/start; do
       required_image_name="${prj_name}__${env_name}__${require_image}:$require_image_tag"
 
       echo -n "> docker build required $required_image_name..."
-      image_id=$(docker build -q \
+      if ! image_id=$(docker build -q \
         $common_build_opts \
         -f $required_dockerfile_path -t $required_image_name $PROJECT_DIR \
-      )
+      ); then
+        echo " FAILED"
+        failed+=("$env_name/$dockerfile (build $require_image)")
+        continue
+      fi
       echo " done ($image_id)"
     fi
 
     echo -n "> docker build..."
-    image_id=$(docker build -q \
+    if ! image_id=$(docker build -q \
       $common_build_opts \
       --build-arg ARG_REQUIRED_IMAGE="$required_image_name" \
       -f $dockerfile_path $PROJECT_DIR \
-    )
+    ); then
+      echo " FAILED"
+      failed+=("$env_name/$dockerfile (build)")
+      continue
+    fi
     echo " done ($image_id)"
 
     echo "| run_opts: $run_opts"
+    [ ${#run_args[@]} -ne 0 ] && echo "| run_args: ${run_args[*]}"
     echo "> docker run..."
-    docker run --rm $(echo $run_opts) \
+    docker run --rm $(echo $run_opts) "${run_args[@]}" \
       --env PYTEST_LAUNCHER_VIRTUAL_ENV=1 \
-      -it $image_id /bin/bash -lc "$launch_tests_cmd"
+      --env UV_PROJECT_ENVIRONMENT=/tmp/venv \
+      --env PYTHONDONTWRITEBYTECODE=1 \
+      $TTY_OPTS $image_id /bin/bash -lc "$launch_tests_cmd" \
+      || failed+=("$env_name/$dockerfile")
+    ran=$((ran+1))
     is_any_docker=1
   done
 
   if [ $is_any_docker -eq 0 ]; then
     echo "! No Dockerfile for $env_dir"
     echo "> start locally"
-    $env_launcher $@
+    $env_launcher $@ || failed+=("$env_name (local)")
+    ran=$((ran+1))
   fi
 done
+
+echo
+if [ ${#failed[@]} -ne 0 ]; then
+  echo "FAILED (${#failed[@]}):"
+  printf '  %s\n' "${failed[@]}"
+  exit 1
+fi
+
+[ $ran -eq 0 ] && die "no test environment ran${ONLY_ENV:+ (ONLY_ENV=$ONLY_ENV)}"
+
+echo "OK: $ran test run(s) passed"

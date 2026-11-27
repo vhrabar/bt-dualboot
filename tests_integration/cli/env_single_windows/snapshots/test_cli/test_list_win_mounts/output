@@ -1,0 +1,14 @@
+CONTEXT: [env_single_windows] valid environment with single windows mounted
+RETCODE=0
+STDOUT:
+=======
+
+Windows locations:
+==================
+ No Windows partitions found
+
+-------------------------------------------------------------
+STDERR:
+=======
+
+-------------------------------------------------------------

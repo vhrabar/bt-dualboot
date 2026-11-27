@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from bt_dualboot.__meta__ import APP_NAME, __version__
 from bt_dualboot.bt_sync_manager import BtSyncManager, DeviceNotFoundError
 from bt_dualboot.win_mount import locate_windows_mount_points
-from bt_dualboot.windows_registry import WindowsRegistry
+from bt_dualboot.windows_registry import RegistryError, WindowsRegistry
 
 from .tools import (
     is_debug,
@@ -24,9 +24,10 @@ DEFAULT_BACKUP_PATH = os.path.join(os.sep, "var", "backup", "bt-dualboot")
 
 def mac_str(argument_value):
     value = argument_value.upper()
-    if re.match("^[A-F0-9:]+$", value) is None:
+    if re.fullmatch(r"(?:[A-F0-9]{2}:){5}[A-F0-9]{2}", value) is None:
         raise ArgumentTypeError(
-            "unexpected characters! Allowed letters A-F, digits 0-9 and colon, use space as separator."
+            "MAC address must have the format XX:XX:XX:XX:XX:XX "
+            "(hex digits 0-9, A-F); use spaces to separate addresses."
         )
     return value
 
@@ -91,6 +92,26 @@ def no_device_error_handler():
     except DeviceNotFoundError as err:
         message = err.args[0]
         raise SystemExit(f"ERROR: {message}\nNothing changed.") from err
+
+
+REGISTRY_ERROR_HINTS = """
+Possible causes:
+  - the Windows partition is mounted read-only: remount it read-write
+  - Windows Fast Startup or hibernation is on, so Linux mounts the partition read-only:
+    turn off Fast Startup in Windows and shut Windows down fully (not restart)
+
+Run with DEBUG=1 to see the reged output and the traceback."""
+
+
+@contextmanager
+def registry_error_handler():
+    """Report RegistryError as a readable message; with DEBUG=1 keep the traceback"""
+    try:
+        yield
+    except RegistryError as err:
+        if is_debug():
+            raise
+        raise SystemExit(f"ERROR: {err}\nNothing changed.\n{REGISTRY_ERROR_HINTS}") from err
 
 
 class Application:
@@ -162,8 +183,25 @@ class Application:
     def list_win_mounts(self):
         print_header("Windows locations:")
 
-        for mount_point in locate_windows_mount_points():
+        mount_points = locate_windows_mount_points()
+        if len(mount_points) == 0:
+            print(" No Windows partitions found")
+
+        for mount_point in mount_points:
             print(" " + mount_point)
+
+    def _needs_windows_location(self):
+        """
+        Returns:
+            bool: whether the given options work on a single Windows location
+                (`--list-win-mounts` alone doesn't: it lists all of them)
+        """
+        return (
+            self.opts.list
+            or self.opts.sync is not None
+            or self.opts.sync_all
+            or _opt_backup(self.opts.backup) is not None
+        )
 
     def list_devices(self):
         sync_manager = self._sync_manager()
@@ -228,7 +266,8 @@ class Application:
         """
         with no_device_error_handler():
             self._sync_manager().push(macs, dry_run=self.is_dry_run())
-            print(f"synced {', '.join(macs)} successfully")
+            if not self.is_dry_run():
+                print(f"synced {', '.join(macs)} successfully")
 
     def sync_all(self):
         sync_manager = self._sync_manager()
@@ -251,7 +290,8 @@ class Application:
                 print("...done")
 
     def run(self):
-        require_univocal_windows_location(user_selected_location=self._opts_win_mount_point())
+        if self._needs_windows_location():
+            require_univocal_windows_location(user_selected_location=self._opts_win_mount_point())
 
         if self.opts.list_win_mounts:
             self.list_win_mounts()
@@ -347,4 +387,5 @@ def main():
     require_chntpw_package()
 
     app = Application(opts)
-    app.run()
+    with registry_error_handler():
+        app.run()

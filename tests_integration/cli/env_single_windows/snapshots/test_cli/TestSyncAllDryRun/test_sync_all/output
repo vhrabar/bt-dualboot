@@ -5,9 +5,9 @@ STDOUT:
 
 Syncing...
 ==========
- [B8:94:A5:FD:F1:0A] DEV-2-02-Name
  [C2:9E:1D:E2:3D:A5] DEV-1-03-Name
-> DRY RUN: push devices B8:94:A5:FD:F1:0A, C2:9E:1D:E2:3D:A5
+ [B8:94:A5:FD:F1:0A] DEV-2-02-Name
+> DRY RUN: push devices C2:9E:1D:E2:3D:A5, B8:94:A5:FD:F1:0A
 ...done
 
 -------------------------------------------------------------

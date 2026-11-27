@@ -5,6 +5,7 @@ from bt_dualboot.bt_windows.convert import (
     hex_string_to_reg_value,
     mac_to_reg_key,
 )
+from bt_dualboot.windows_registry import RegistryError
 
 
 class BluetoothDevice:
@@ -17,7 +18,7 @@ class BluetoothDevice:
         pairing_key (str)
         ltk (str)
         rand (int)
-        edir (int)
+        ediv (int)
         adapter_mac (str)
         source (str): kind of 'Windows', 'Linux'
 
@@ -69,7 +70,7 @@ class BluetoothDevice:
                 + "\\"
                 + mac_to_reg_key(self.mac)
             )
-        raise Exception(f"Missing pairing key or long term key for {self.adapter_mac}/{self.mac}")
+        raise RegistryError(f"Missing pairing key or long term key for {self.adapter_mac}/{self.mac}")
 
     def rand_to_erand(self):
         # hex(b) type -> 64 bit -> 8 byte in little endian
@@ -77,9 +78,8 @@ class BluetoothDevice:
         return hex_string_to_reg_hex_b(hex_string)
 
     def ediv_to_dword(self):
-        # dword alias hex(4) type -> 32 bit -> 4 byte in little endian
-        # Microsoft says it should be little endian: https://learn.microsoft.com/en-us/windows/win32/sysinfo/registry-value-types
-        # they are liars
+        # .reg dword: text represents the numeric hexadecimal value, not the
+        # little-endian byte sequence used to store REG_DWORD in the hive.
         dword_val = struct.pack(">I", self.ediv).hex()
         return f"dword:{dword_val}"
 
@@ -94,13 +94,15 @@ class BluetoothDevice:
                 '"ERand"': self.rand_to_erand(),
                 '"EDIV"': self.ediv_to_dword(),
             }
-        raise KeyError(f"Device {self.mac} has neither pairing key, nor long term key")
+        raise RegistryError(f"Device {self.mac} has neither pairing key, nor long term key")
 
     def synced(self, other):
         if self.pairing_key:
             return self.pairing_key == other.pairing_key
-        if self.ltk and self.rand and self.ediv:
+        # EDiv=0 / Rand=0 are valid: BlueZ stores them for LE Secure Connections
+        if self.ltk and self.rand is not None and self.ediv is not None:
             return self.ltk == other.ltk and self.rand == other.rand and self.ediv == other.ediv
+        return False
 
     @classmethod
     def source_linux(cls):
@@ -118,3 +120,7 @@ class BluetoothDevice:
 
     def has_pairing_key(self):
         return self.pairing_key is not None
+
+    def has_any_key(self):
+        """True when the device has a classic LinkKey or a BLE LongTermKey"""
+        return self.pairing_key is not None or self.ltk is not None

@@ -2,7 +2,7 @@ CONTEXT: [env_single_windows] valid environment with single windows mounted
 RETCODE=0
 STDOUT:
 =======
-> BACKUP /mnt/win/Windows/System32/config/SYSTEM to /tmp/pytest-of-vhrabar/pytest-0/cli_app__env_single_windows0/TestSync/test_backup/subdir/SYSTEM-2020-12-24--20-30-00
+> BACKUP /mnt/win/Windows/System32/config/SYSTEM to /tmp/pytest-of-{USER}/pytest-{N}/cli_app__env_single_windows0/TestSync/test_backup/subdir/SYSTEM-2020-12-24--20-30-00
 synced C2:9E:1D:E2:3D:A5 successfully
 
 -------------------------------------------------------------

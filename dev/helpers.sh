@@ -135,8 +135,10 @@ pytest_launcher() {
     cmd="$(resolve_cmd "pytest")"
     ( set -x ; $cmd $TEST_MODULE_DIR "$@" )
   fi
+  status=$?
   [ $fl_print_usage_after -eq 1 ] && echo && pytest_launcher_usage
   [ $fl_shell -eq 1 ] && bash
+  return $status
 }
 
 

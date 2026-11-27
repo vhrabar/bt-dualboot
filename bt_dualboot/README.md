@@ -34,6 +34,10 @@ $ sudo uvx --from bt-dualboot-sync bt-dualboot --sync C2:9E:1D:E2:3D:A5
 
 For a persistent command: `uv tool install bt-dualboot-sync`
 
+Native packages are also available for Ubuntu ([`ppa:vhrabar/tools`](https://launchpad.net/~vhrabar/+archive/ubuntu/tools)),
+Fedora ([`copr:vhrabar/bt-dualboot-sync`](https://copr.fedorainfracloud.org/coprs/vhrabar/bt-dualboot-sync/))
+and Arch ([AUR](https://aur.archlinux.org/packages/bt-dualboot-sync)).
+
 ## Documentation
 
 Full usage, troubleshooting, advanced options and CLI reference:

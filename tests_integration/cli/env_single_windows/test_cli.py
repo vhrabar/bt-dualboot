@@ -183,6 +183,16 @@ def test_no_backup_without_sync(snapshot):
         assert retcode == 2
 
 
+# $ --list-win-mounts
+def test_list_win_mounts(snapshot):
+    """should list Windows locations and exit 0 even when none is auto-discovered
+    """
+    for res in snapshot_cli(snapshot, ["--list-win-mounts"]):
+        retcode, stdout = itemgetter("retcode", "stdout")(res)
+        assert stdout.find("No Windows partitions found") > 0
+        assert retcode == 0
+
+
 # (user) $ -l
 def test_list(snapshot):
     """should fail with error about permissions to /var/lib/bluetooth"""
@@ -374,6 +384,14 @@ class TestBackupSynonyms(BaseTestSync):
 
 
 class TestSync(BaseTestSync):
+    def assert_sync_output(self, stdout, macs):
+        macs_text = ", ".join(macs)
+        if self.is_dry_run():
+            assert f"> DRY RUN: push devices {macs_text}" in stdout
+            assert "successfully" not in stdout
+        else:
+            assert f"synced {macs_text} successfully" in stdout
+
     def test_require_backup(self, suite_snapshot):
         """should die with backup options suggestion"""
         cmd_opts = self.build_opts(["--sync", MAC_NEED_SYNC_2], unset_backup=True)
@@ -397,8 +415,7 @@ class TestSync(BaseTestSync):
             fake_time = backup_context["fake_time"]
             for res in snapshot_cli(suite_snapshot, cmd_opts, sudo=True, fake_time=fake_time):
                 retcode, stdout = itemgetter("retcode", "stdout")(res)
-                expected_output = f"synced {MAC_NEED_SYNC_2} successfully"
-                assert stdout.find(expected_output) >= 0
+                self.assert_sync_output(stdout, [MAC_NEED_SYNC_2])
                 assert retcode == 0
 
         self.assert_after([MAC_NEED_SYNC_1])
@@ -413,8 +430,7 @@ class TestSync(BaseTestSync):
             fake_time = backup_context["fake_time"]
             for res in snapshot_cli(suite_snapshot, cmd_opts, sudo=True, fake_time=fake_time):
                 retcode, stdout = itemgetter("retcode", "stdout")(res)
-                expected_output = f"synced {MAC_NEED_SYNC_2} successfully"
-                assert stdout.find(expected_output) >= 0
+                self.assert_sync_output(stdout, [MAC_NEED_SYNC_2])
                 assert retcode == 0
 
         self.assert_after([MAC_NEED_SYNC_1])
@@ -424,8 +440,7 @@ class TestSync(BaseTestSync):
         cmd_opts = self.build_opts(["--sync", MAC_NEED_SYNC_2])
         for res in snapshot_cli(suite_snapshot, cmd_opts, sudo=True):
             retcode, stdout = itemgetter("retcode", "stdout")(res)
-            expected_output = f"synced {MAC_NEED_SYNC_2} successfully"
-            assert stdout.find(expected_output) >= 0
+            self.assert_sync_output(stdout, [MAC_NEED_SYNC_2])
             assert retcode == 0
 
         self.assert_after([MAC_NEED_SYNC_1])
@@ -436,8 +451,7 @@ class TestSync(BaseTestSync):
 
         for res in snapshot_cli(suite_snapshot, cmd_opts, sudo=True):
             retcode, stdout = itemgetter("retcode", "stdout")(res)
-            expected_output = f"synced {MAC_NEED_SYNC_2}, {MAC_NEED_SYNC_1} successfully"
-            assert stdout.find(expected_output) >= 0
+            self.assert_sync_output(stdout, [MAC_NEED_SYNC_2, MAC_NEED_SYNC_1])
             assert retcode == 0
 
         self.assert_after(["NONE"])
@@ -490,9 +504,17 @@ class TestSync(BaseTestSync):
         cmd_opts = self.build_opts(["--sync", f"{MAC_NEED_SYNC_1},{MAC_NEED_SYNC_2}"])
         for res in snapshot_cli(suite_snapshot, cmd_opts, sudo=True):
             retcode, stderr = itemgetter("retcode", "stderr")(res)
-            expected_error = "error: argument --sync: unexpected characters! Allowed letters A-F, digits 0-9 and colon, use space as separator."
+            expected_error = "error: argument --sync: MAC address must have the format XX:XX:XX:XX:XX:XX"
             assert stderr.find(expected_error) >= 0
             assert retcode == 2
+
+        self.assert_nothing_changed()
+
+    def test_incomplete_mac(self, suite_snapshot):
+        cmd_opts = self.build_opts(["--sync", "ABC"])
+        for res in snapshot_cli(suite_snapshot, cmd_opts, sudo=True):
+            assert res["retcode"] == 2
+            assert "MAC address must have the format XX:XX:XX:XX:XX:XX" in res["stderr"]
 
         self.assert_nothing_changed()
 
@@ -501,8 +523,7 @@ class TestSync(BaseTestSync):
 
         for res in snapshot_cli(suite_snapshot, cmd_opts, sudo=True):
             retcode, stdout = itemgetter("retcode", "stdout")(res)
-            expected_output = f"synced {MAC_NEED_SYNC_2}, {MAC_NEED_SYNC_1} successfully"
-            assert stdout.find(expected_output) >= 0
+            self.assert_sync_output(stdout, [MAC_NEED_SYNC_2, MAC_NEED_SYNC_1])
             assert retcode == 0
 
         self.assert_after(["NONE"])
@@ -594,7 +615,7 @@ class TestSyncAll(BaseTestSync):
 
     # --sync-all --sync MAC     => Error
     def test_sync_all_and_sync(self, suite_snapshot):
-        cmd_opts = self.build_opts(["--sync-all", "--sync", "123"])
+        cmd_opts = self.build_opts(["--sync-all", "--sync", MAC_NEED_SYNC_1])
         for res in snapshot_cli(suite_snapshot, cmd_opts, sudo=True):
             assert res["retcode"] == 2
 
@@ -603,3 +624,59 @@ class TestSyncAll(BaseTestSync):
 
 class TestSyncAllDryRun(DryRunMixin, TestSyncAll):
     pass
+
+
+READONLY_WIN_MOUNT_POINT = os.path.join(os.sep, "mnt", "win-ro")
+# the same directory, read-write through the /src bind
+READONLY_WIN_SOURCE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "win_readonly")
+
+
+@mark.skipif(
+    not os.path.ismount(READONLY_WIN_MOUNT_POINT),
+    reason="needs the read-only /mnt/win-ro bind from opts-Dockerfile",
+)
+class TestReadOnlyHive:
+    """a read-only Windows partition (read-only mount, Fast Startup, hibernation)"""
+
+    @fixture(autouse=True)
+    def readonly_hive(self):
+        """Copy the prepared hive (devices imported) to where /mnt/win-ro shows it read-only"""
+        hive = os.path.join(READONLY_WIN_SOURCE, WINDOWS10_REGISTRY_PATH)
+        os.makedirs(os.path.dirname(hive), exist_ok=True)
+        shutil.copy(SYSTEM_REG, hive)
+        yield hive
+        shutil.rmtree(os.path.join(READONLY_WIN_SOURCE, "Windows"))
+
+    @fixture
+    def suite_snapshot(self, snapshot):
+        """Append class name to snapshot path"""
+        default_dir = snapshot.snapshot_dir
+        snapshot.snapshot_dir = default_dir.parent / self.__class__.__name__ / default_dir.parts[-1]
+        return snapshot
+
+    def opts(self, cmd_opts):
+        return ["--win", READONLY_WIN_MOUNT_POINT, *cmd_opts]
+
+    def test_list(self):
+        """reading still works"""
+        res = cli_result(self.opts(["-l", "--bot"]), sudo=True)
+        assert res["retcode"] == 0
+        assert set(filter_devices_macs(res["stdout"], "needs_sync")) == {MAC_NEED_SYNC_1, MAC_NEED_SYNC_2}
+
+    def test_sync(self, suite_snapshot, readonly_hive):
+        """should fail without a traceback, say nothing changed and leave the hive untouched"""
+        with open(readonly_hive, "rb") as f:
+            before = f.read()
+
+        cmd_opts = self.opts(["--sync", MAC_NEED_SYNC_2, "--no-backup"])
+        for res in snapshot_cli(suite_snapshot, cmd_opts, sudo=True):
+            retcode, stdout, stderr = itemgetter("retcode", "stdout", "stderr")(res)
+            assert "Traceback" not in stderr
+            assert "is read-only." in stderr
+            assert "Nothing changed." in stderr
+            assert "Fast Startup" in stderr
+            assert "successfully" not in stdout
+            assert retcode == 1
+
+        with open(readonly_hive, "rb") as f:
+            assert f.read() == before, "hive must stay unchanged"

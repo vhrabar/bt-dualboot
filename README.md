@@ -1,4 +1,3 @@
-
 Sync Bluetooth for dualboot Linux and Windows
 =============================================
 
@@ -8,9 +7,10 @@ User-friendly tool that makes your Bluetooth devices work in both Windows and Li
 ### bt-dualboot
   * doesn't require rebooting 3 times
   * asks you for as few details as possible
+  * works with classic and Bluetooth LE devices
   * ... [see all advantages and alternatives](#advantages-and-alternatives)
 
-[How to install](#prerequisites)
+[How to install](#install)
 
 **For developers**: check out the [Developer insights](README-dev.md) for useful development and testing tips.
 
@@ -27,7 +27,7 @@ The partition must be mounted with [write access](#troubleshooting-windows-parti
 **2. Sync all devices available for sync**
 
 ```console
-$ sudo uvx --from bt-dualboot-sync bt-dualboot --sync-all
+$ sudo bt-dualboot --sync-all
 
 Syncing...
 ==========
@@ -37,7 +37,7 @@ Syncing...
 ```
 
 NOTES:
-  (i) **sudo** tip: this tool needs read-only access to Bluetooth device configuration files, which are inaccessible to a regular user. Make sure `uvx` is reachable by root (install uv system-wide, or use `sudo env "PATH=$PATH" uvx ...`).
+  (i) **sudo** tip: this tool needs read-only access to Bluetooth device configuration files, which are inaccessible to a regular user. If you run it through `uvx` rather than a [distribution package](#distribution-packages), see [the uv notes](#with-uv).
   (ii) [--backup vs --no-backup](#--backup-vs---no-backup): you will be asked about your Windows Registry backup strategy
   (iii) use `--dry-run` to preview the effects of any command
 
@@ -46,7 +46,7 @@ NOTES:
 1. List device info
 
 ```console
-$ sudo uvx --from bt-dualboot-sync bt-dualboot -l
+$ sudo bt-dualboot -l
 
 Works both in Linux and Windows
 ===============================
@@ -55,16 +55,23 @@ Works both in Linux and Windows
 Needs sync
 ==========
 
-The following devices are available for sync with the `--sync-all` or `--sync MAC` options.
+Following devices available for sync with `--sync-all` or `--sync MAC` options.
 
  [C2:9E:1D:E2:3D:A5] Keyboard K380
 
 Have to be paired in Windows
 ============================
 
-The following devices are unavailable for sync unless you boot Windows and pair them:
+Following devices unavailable for sync unless you boot Windows and pair them
 
  [E9:1D:FE:2A:C3:C8] JBL GO
+
+Missing pairing key
+===================
+
+Following devices do not have a pairing key and so cannot be synced
+
+ [22:94:90:56:EE:38] Mouse M590
 
 ```
 
@@ -72,7 +79,7 @@ The following devices are unavailable for sync unless you boot Windows and pair 
 2. Sync devices using their MAC
 
 ```console
-$ sudo uvx --from bt-dualboot-sync bt-dualboot --sync C2:9E:1D:E2:3D:A5
+$ sudo bt-dualboot --sync C2:9E:1D:E2:3D:A5
 
 Syncing...
 ==========
@@ -81,25 +88,38 @@ Syncing...
 
 ```
 
-See [`bt-dualboot -h`](#cli-reference) and the chapters below for details.
-
-## Prerequisites 
-
-* [uv](https://docs.astral.sh/uv/) installed — it fetches Python and the tool on demand.
-
-* `chntpw` package installed:
-
-```console
-Ubuntu $ sudo apt install chntpw
-...
-```
-
-see https://pogostick.net/~pnh/ntpasswd/
-
+See [`bt-dualboot -h`](#cli-reference), `man bt-dualboot` and the chapters below for details.
 
 ## Install
 
-No install step is needed — run it straight from PyPI with `uvx`:
+### Distribution packages
+
+Native packages pull in `chntpw` and install the `bt-dualboot` command and its man page.
+
+**Ubuntu and derivatives**: [`ppa:vhrabar/tools`](https://launchpad.net/~vhrabar/+archive/ubuntu/tools):
+
+```console
+$ sudo add-apt-repository ppa:vhrabar/tools
+$ sudo apt install bt-dualboot-sync
+```
+
+**Fedora and rpm-based distributions**: [`copr:vhrabar/bt-dualboot-sync`](https://copr.fedorainfracloud.org/coprs/vhrabar/bt-dualboot-sync/):
+
+```console
+$ sudo dnf copr enable vhrabar/bt-dualboot-sync
+$ sudo dnf install bt-dualboot-sync
+```
+
+**Arch and derivatives**: [`bt-dualboot-sync`](https://aur.archlinux.org/packages/bt-dualboot-sync) in the AUR:
+
+```console
+$ yay -S bt-dualboot-sync
+```
+
+### With uv
+
+On any other distribution (including Ubuntu 24.04), run it from PyPI with [uv](https://docs.astral.sh/uv/). 
+This needs Python 3.11+ (uv fetches it on demand) and the `chntpw` package installed separately (see https://pogostick.net/~pnh/ntpasswd/):
 
 ```console
 $ uvx --from bt-dualboot-sync bt-dualboot --help
@@ -111,19 +131,18 @@ For a persistent `bt-dualboot` command:
 $ uv tool install bt-dualboot-sync
 ```
 
-NOTES: **sudo** — `--sync*` and `-l` require read-only access to Bluetooth device configuration files, which are inaccessible to a regular user, so run those under `sudo` (see the sudo tip above). Native OS packages will be added in a future release.
+NOTES: **sudo** — `--sync*` and `-l` require read-only access to Bluetooth device configuration files, which are inaccessible to a regular user, 
+so run those under `sudo`. Make sure `uvx` (or the `uv tool` binary) is reachable by root: install uv system-wide, o
+r use `sudo env "PATH=$PATH" uvx --from bt-dualboot-sync bt-dualboot ...`.
 
 ### Supported OS
 
-Tested with Linux Mint 19.3, 20.3 (Ubuntu 18.04 bionic, 20.04 focal) and Windows 10.
+Supported:
 
-Supported: 
-
-* Potentially any Linux-based system that keeps its Bluetooth configuration in a similar format to Ubuntu
+* Potentially any Linux-based system that keeps its Bluetooth configuration in `/var/lib/bluetooth` in the same format as BlueZ on Ubuntu
 * Windows 10+
 
-More OSes will be tested in future releases, and Mac OS support will be added. If you get a success or failure result for any OS not listed as supported, please share your experience at https://github.com/x2es/bt-dualboot/issues/1.
-
+Tested on: Windows 10/11 and Ubuntu 25.10/26.04/26.10, Fedora 44/45 and Arch Linux.
 
 ## Advanced usage
 
@@ -134,7 +153,7 @@ The Windows Registry update is performed in a safe way using `chntpw/reged` with
 You have to choose your backup strategy explicitly.
 
 ```console
-$ sudo uvx --from bt-dualboot-sync bt-dualboot --sync-all 
+$ sudo bt-dualboot --sync-all
 usage: ....
 bt-dualboot: error: Neither backup option given!
 
@@ -159,14 +178,14 @@ By default the application recognizes and uses the mounted Windows partition. If
 Use `--list-win-mounts` to list the recognized Windows partitions.
 
 ```console
-$ uvx --from bt-dualboot-sync bt-dualboot --list-win-mounts
+$ bt-dualboot --list-win-mounts
 
 Windows locations:
 ==================
  /media/user/win_foo
  /media/user/win_bar
- 
-$ sudo uvx --from bt-dualboot-sync bt-dualboot --win /media/user/win_foo -l
+
+$ sudo bt-dualboot --win /media/user/win_foo -l
 ```
 
 #### Troubleshooting: Windows partition write access
@@ -176,6 +195,8 @@ If the Windows partition is mounted read-only, you have to remount it read-write
 ```console
 $ sudo mount -o remount,rw /mnt/win/path
 ```
+
+If it still mounts read-only, Windows was most likely hibernated or shut down with Fast Startup enabled. Disable Fast Startup in Windows and shut it down fully.
 
 ### Machine processing
 
@@ -188,7 +209,7 @@ Every time a Bluetooth device is paired in one dualboot OS, it stops working in 
 
 The solution is to sync the saved pairing keys between both OSes. This answer describes how to do it manually: https://unix.stackexchange.com/a/255510/411221
 
-This application implements the approach suggested in this [comment](https://unix.stackexchange.com/questions/255509/bluetooth-pairing-on-dual-boot-of-windows-linux-mint-ubuntu-stop-having-to-p#comment545967_255510), which copies pairing keys directly from Linux to Windows, avoiding multiple reboots.
+This application implements the approach suggested in this [comment](https://unix.stackexchange.com/questions/255509/bluetooth-pairing-on-dual-boot-of-windows-linux-mint-ubuntu-stop-having-to-p#comment545967_255510), which copies pairing keys directly from Linux to Windows, avoiding multiple reboots. For Bluetooth LE devices the LTK, ERand and EDIV keys are copied as well.
 
 
 ## Advantages and alternatives
@@ -196,9 +217,10 @@ This application implements the approach suggested in this [comment](https://uni
 **bt-dualboot**:
 
 * doesn't require rebooting multiple times
-* [simple install](#prerequisites)
+* [simple install](#install) — native packages for Ubuntu, Fedora and Arch, or straight from PyPI
 * provides a single [simple CLI](#cli-reference), doesn't require invoking additional scripts
 * discovers the mounted Windows partition automatically
+* supports classic (BR/EDR) and Bluetooth LE devices
 * safe update of the Windows Registry without changing the file size (rewrite only)
 * [backs up the Windows Registry](#--backup-vs---no-backup) before the update
 * doesn't require importing/exporting files or handling encoding issues
@@ -208,13 +230,16 @@ This application implements the approach suggested in this [comment](https://uni
 ## CLI reference
 
 ```console
-$ uvx --from bt-dualboot-sync bt-dualboot -h
-usage: bt-dualboot [-h] [-l] [--list-win-mounts] [--bot] [--dry-run] [--win MOUNT] [--sync MAC [MAC ...]] [--sync-all] [-n] [-b [path]]
+$ bt-dualboot -h
+usage: bt-dualboot [-h] [--version] [-l] [--list-win-mounts] [--bot]
+                   [--dry-run] [--win MOUNT] [--sync MAC [MAC ...]]
+                   [--sync-all] [-n] [-b [path]]
 
-Sync bluetooth keys from Linux to Windows.
+Sync bluetooth keys from Linux to Windows (v0.1.3)
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
+  --version             print version
 
 List resources:
   -l, --list            [root required] list bluetooth devices

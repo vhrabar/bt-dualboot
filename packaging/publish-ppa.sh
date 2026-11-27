@@ -22,15 +22,6 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
-# Adapted from vhrabar/SecureEye's scripts/publish-ppa.sh, which in turn is
-# derived from Kevin Yue's ppa-deploy action (MIT, above).
-#
-# Unlike SecureEye, bt-dualboot-sync is a 3.0 (quilt) package: this runs the
-# non-native path, where debmake lays down a skeleton, packaging/debian is
-# copied over it, and the release tarball is linked in as the .orig tarball.
-# KEEP_CHANGELOG keeps the entry written in packaging/debian/changelog and only
-# rewrites its revision and target series.
-
 set -e
 export DEBIAN_FRONTEND=noninteractive
 
@@ -277,7 +268,7 @@ for s in $SERIES; do
 
         new_revision=$(echo "$newversion" | cut -d- -f2)
         # Replace the package name, revision, distribution, and urgency in the changelog
-        sed -E "s/^(\S+) \(([^-]+)-([^)]+)\) ([^;]+); urgency=(\S+)/$package (\2-$new_revision) $s; urgency=medium/" "$debian_dir/changelog" \
+        sed -E "0,/^(\S+) \(([^-]+)-([^)]+)\) ([^;]+); urgency=(\S+)/s//$package (\2-$new_revision) $s; urgency=medium/" "$debian_dir/changelog" \
             > debian/changelog
 
         echo "Changelog after replacement:"
