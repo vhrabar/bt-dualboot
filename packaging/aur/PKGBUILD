@@ -1,7 +1,7 @@
 # Maintainer: Vedran Hrabar <vedran.hrabar@outlook.com>
 
 pkgname=bt-dualboot-sync
-pkgver=0.1.0
+pkgver=0.1.4
 pkgrel=1
 pkgdesc="Sync Bluetooth pairing keys from Linux to Windows on a dualboot machine"
 arch=('any')
