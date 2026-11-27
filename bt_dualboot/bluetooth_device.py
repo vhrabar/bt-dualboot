@@ -119,3 +119,7 @@ class BluetoothDevice:
 
     def has_pairing_key(self):
         return self.pairing_key is not None
+
+    def has_any_key(self):
+        """True when the device has a classic LinkKey or a BLE LongTermKey"""
+        return self.pairing_key is not None or self.ltk is not None

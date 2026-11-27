@@ -24,6 +24,9 @@ Following devices unavailable for sync unless you boot Windows and pair them
 
  [C5:9E:1D:E2:3D:A6] DEV-1-05-Name
  [D1:8A:4E:71:5D:C1] DEV-1-04-Name
+ [E1:5A:7C:3B:9D:01] DEV-1-06-Name
+ [E2:5A:7C:3B:9D:02] DEV-1-07-Name
+ [E3:5A:7C:3B:9D:03] DEV-1-08-Name
  [C4:72:B3:6F:82:42] DEV-2-03-Name
 
 Missing pairing key
@@ -32,9 +35,6 @@ Missing pairing key
 Following devices do not have a pairing key and so cannot be synced
 
  [22:94:90:56:EE:38] DEV-1-02-Name
- [E1:5A:7C:3B:9D:01] DEV-1-06-Name
- [E2:5A:7C:3B:9D:02] DEV-1-07-Name
- [E3:5A:7C:3B:9D:03] DEV-1-08-Name
 
 -------------------------------------------------------------
 STDERR:

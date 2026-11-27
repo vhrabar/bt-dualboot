@@ -1,4 +1,4 @@
-from pytest import fixture, mark
+from pytest import fixture
 from unittest.mock import patch
 from bt_dualboot.bt_sync_manager import BtSyncManager
 from bt_dualboot.bluetooth_device import BluetoothDevice
@@ -15,15 +15,11 @@ from tests.bt_linux.shared_fixtures import *
 SAMPLE_PUSH_MAC1 = "C2:9E:1D:E2:3D:A5"
 SAMPLE_PUSH_MAC2 = "B8:94:A5:FD:F1:0A"
 
-# test currnetlz known bugs
-KNOWN_BUG_MACS = {
-    MAC_BLE_NO_WIN_PAIR
-}
 
 
 def macs_of(devices):
-    """Sorted MACs of given devices, ignoring KNOWN_BUG_MACS"""
-    return sorted(device.mac for device in devices if device.mac not in KNOWN_BUG_MACS)
+    """Sorted MACs of given devices"""
+    return sorted(device.mac for device in devices)
 
 
 @fixture
@@ -63,7 +59,11 @@ class TestBtSyncManager__Initial:
         assert macs_of(devices) == sorted(expected_macs)
 
     def test_devices_absent_windows(self, sync_manager):
-        expected_macs = ["D1:8A:4E:71:5D:C1", "C4:72:B3:6F:82:42"]
+        expected_macs = [
+            "D1:8A:4E:71:5D:C1",
+            "C4:72:B3:6F:82:42",
+            MAC_BLE_NO_WIN_PAIR,
+        ]
 
         devices = sync_manager.devices_absent_windows()
         assert macs_of(devices) == sorted(expected_macs)
@@ -100,7 +100,11 @@ class TestBtSyncManager__AfterSync:
         assert macs_of(devices) == sorted(expected_macs)
 
     def test_devices_absent_windows(self, sync_manager, just_pushed):
-        expected_macs = ["D1:8A:4E:71:5D:C1", "C4:72:B3:6F:82:42"]
+        expected_macs = [
+            "D1:8A:4E:71:5D:C1",
+            "C4:72:B3:6F:82:42",
+            MAC_BLE_NO_WIN_PAIR,
+        ]
 
         devices = sync_manager.devices_absent_windows()
         assert macs_of(devices) == sorted(expected_macs)
@@ -179,17 +183,15 @@ class TestBluetoothDevice__synced:
 
     def test_ltk_without_ediv_rand_returns_false(self):
         assert self.ble(ediv=None, rand=None).synced(self.ble()) is False
-@mark.bug
-@patch("bt_dualboot.bt_linux.devices.LINUX_BT_DIR", bt_linux_sample_01_unwrapped())
-class TestBtSyncManager__KnownBugs:
-    """Regression tests for #27. Run with `-m bug` (dev/start-tests-bug)"""
 
-    def test_ble_only_device_absent_windows(self, sync_manager):
-        """#27: a BLE device with an LTK but no Windows pairing has to be paired in Windows"""
-        absent_macs = [device.mac for device in sync_manager.devices_absent_windows()]
-        no_key_macs = [device.mac for device in sync_manager.devices_without_pairingkey()]
 
-        assert MAC_BLE_NO_WIN_PAIR in absent_macs
-        assert MAC_BLE_NO_WIN_PAIR not in no_key_macs
-        # a device with no key of either kind stays under "Missing pairing key"
-        assert "22:94:90:56:EE:38" in no_key_macs
+class TestBluetoothDevice__has_any_key:
+    def test_link_key(self):
+        assert BluetoothDevice(pairing_key="A43C6BD9E1592C1FFA0DE17F3DB6F38B").has_any_key() is True
+
+    def test_ltk_only(self):
+        """#27: a BLE device with only an LTK still has a key"""
+        assert BluetoothDevice(ltk="E35A7C3B9D03E35A7C3B9D03E35A7C3B").has_any_key() is True
+
+    def test_no_keys(self):
+        assert BluetoothDevice().has_any_key() is False
