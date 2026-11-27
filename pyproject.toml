@@ -61,10 +61,10 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
-    "bug: known-bug regression test, run via dev/start-tests-bug (-m bug)",
+    "bug: known-bug regression test, excluded by default, run via dev/start-tests-bug (-m bug)",
     "manual: interactive test spawning a debug shell, excluded by default, run via dev/start-tests-manual (-m manual)",
 ]
-addopts = "-m 'not manual'"
+addopts = "-m 'not manual and not bug'"
 
 [tool.hatch.build.targets.wheel]
 packages = ["bt_dualboot"]
