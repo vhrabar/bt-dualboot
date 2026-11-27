@@ -94,3 +94,49 @@ def test_installed_reged_needs_no_installation_hint(monkeypatch, capsys):
     tools.require_chntpw_package()
 
     assert capsys.readouterr() == ("", "")
+
+
+@pytest.fixture
+def windows_mounts(monkeypatch):
+    """Fakes the auto-discovered Windows mount points"""
+
+    def set_mounts(mount_points):
+        locate = lambda: list(mount_points)  # noqa: E731
+        monkeypatch.setattr(app, "locate_windows_mount_points", locate)
+        monkeypatch.setattr(tools, "locate_windows_mount_points", locate)
+        monkeypatch.setattr(app, "require_chntpw_package", lambda: None)
+
+    return set_mounts
+
+
+@pytest.mark.parametrize(
+    "mount_points",
+    [[], ["/media/user/Windows"], ["/media/user/Windows 10", "/media/user/Windows 11"]],
+)
+def test_list_win_mounts_lists_any_number_of_locations(
+    mount_points, windows_mounts, monkeypatch, capsys
+):
+    """--list-win-mounts exits 0 with 0, 1 or 2 Windows mounts and lists them all"""
+    windows_mounts(mount_points)
+    monkeypatch.setattr(sys, "argv", ["bt-dualboot", "--list-win-mounts"])
+
+    app.main()
+
+    stdout = capsys.readouterr().out
+    for mount_point in mount_points:
+        assert f" {mount_point}\n" in stdout
+    if mount_points == []:
+        assert "No Windows partitions found" in stdout
+
+
+@pytest.mark.parametrize("mount_points", [[], ["/media/user/Windows 10", "/media/user/Windows 11"]])
+@pytest.mark.parametrize("command", [["-l"], ["--sync-all", "--no-backup"], ["--sync-all", "--backup"]])
+def test_commands_need_univocal_windows_location(mount_points, command, windows_mounts, monkeypatch):
+    """-l, --sync, --sync-all and --backup still error when the location is ambiguous"""
+    windows_mounts(mount_points)
+    monkeypatch.setattr(sys, "argv", ["bt-dualboot", *command])
+
+    with pytest.raises(SystemExit) as exc_info:
+        app.main()
+
+    assert "Windows locations found, use `--win MOUNT`" in str(exc_info.value.code)

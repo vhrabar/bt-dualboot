@@ -183,6 +183,16 @@ def test_no_backup_without_sync(snapshot):
         assert retcode == 2
 
 
+# $ --list-win-mounts
+def test_list_win_mounts(snapshot):
+    """should list Windows locations and exit 0 even when none is auto-discovered
+    """
+    for res in snapshot_cli(snapshot, ["--list-win-mounts"]):
+        retcode, stdout = itemgetter("retcode", "stdout")(res)
+        assert stdout.find("No Windows partitions found") > 0
+        assert retcode == 0
+
+
 # (user) $ -l
 def test_list(snapshot):
     """should fail with error about permissions to /var/lib/bluetooth"""
