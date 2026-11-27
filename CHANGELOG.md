@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-11-27
+
 ### Changed
 
 - Devices are listed in a stable order (sorted by adapter and device MAC) by `-l` and `--sync-all`, instead of the order the filesystem happens to return them in.
@@ -73,7 +75,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - The "paired for multiple BT-adapters" warnings print the device MACs again; they were literal text because of a missing f-string prefix. Fixed upstream by [@J3RN](https://github.com/J3RN) in [x2es/bt-dualboot#9](https://github.com/x2es/bt-dualboot/pull/9); never released.
 - `raise ... from err` on the device-not-found path, so the underlying error is no longer reported as an unexpected exception during handling.
 
-[Unreleased]: https://github.com/vhrabar/bt-dualboot/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/vhrabar/bt-dualboot/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/vhrabar/bt-dualboot/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/vhrabar/bt-dualboot/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/vhrabar/bt-dualboot/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/vhrabar/bt-dualboot/compare/v0.1.0...v0.1.1
