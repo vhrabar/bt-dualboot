@@ -202,7 +202,7 @@ class BtSyncManager:
         for_import = {}
         for device in devices:
             sec_key, value = device.for_win_import()
-            for_import[sec_key] = value
+            for_import.setdefault(sec_key, {}).update(value)
 
         self.windows_registry.import_dict(for_import)
 

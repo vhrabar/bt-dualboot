@@ -138,6 +138,19 @@ class TestBtSyncManager__push:
         sync_manager.push([BluetoothDevice(mac=SAMPLE_PUSH_MAC1)])
         self.assert_effect(sync_manager)
 
+    def test_push_same_adapter_writes_all_devices(self, sync_manager):
+        """#25: classic devices sharing an adapter must all be written"""
+        pushed = [MAC_NEED_SYNC_2, MAC_NEED_SYNC_SAME_ADAPTER]
+        sync_manager.push(pushed)
+
+        assert macs_of(sync_manager.devices_needs_sync()) == [MAC_NEED_SYNC_1]
+
+    def test_push_all_needs_sync(self, sync_manager):
+        """#25: pushing every needs-sync device (--sync-all) leaves nothing to sync"""
+        sync_manager.push(sync_manager.devices_needs_sync())
+
+        assert macs_of(sync_manager.devices_needs_sync()) == []
+
     def test_push_updates_multiple_devices(self, sync_manager):
         sync_manager.push([SAMPLE_PUSH_MAC1, SAMPLE_PUSH_MAC2])
         assert macs_of(sync_manager.devices_needs_sync()) == [MAC_NEED_SYNC_SAME_ADAPTER]
@@ -146,15 +159,7 @@ class TestBtSyncManager__push:
 @mark.bug
 @patch("bt_dualboot.bt_linux.devices.LINUX_BT_DIR", bt_linux_sample_01_unwrapped())
 class TestBtSyncManager__KnownBugs:
-    """Regression tests for #25, #26, #27. Run with `-m bug` (dev/start-tests-bug)"""
-
-    def test_push_same_adapter_writes_all_devices(self, sync_manager):
-        """#25: classic devices sharing an adapter must all be written"""
-        pushed = [MAC_NEED_SYNC_2, MAC_NEED_SYNC_SAME_ADAPTER]
-        sync_manager.push(pushed)
-
-        needs_sync_macs = [device.mac for device in sync_manager.devices_needs_sync()]
-        assert set(pushed) & set(needs_sync_macs) == set()
+    """Regression tests for #26, #27. Run with `-m bug` (dev/start-tests-bug)"""
 
     def test_ble_zero_ediv_rand_is_synced(self, sync_manager):
         """#26: EDiv=0 / Rand=0 are valid LE Secure Connections values"""
