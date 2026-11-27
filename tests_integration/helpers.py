@@ -101,7 +101,7 @@ def cli_result(cmd_opts, sudo=False, fake_time=None, launcher=None):
         cmd = ["sh", "-c", cmd]
 
     if sudo is True:
-        cmd.insert(0, "sudo")
+        cmd = ["sudo", "PYTHONDONTWRITEBYTECODE=1", *cmd]
 
     res = subprocess.run(
         cmd,

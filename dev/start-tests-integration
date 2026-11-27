@@ -144,6 +144,8 @@ for env_launcher in ./**/env_*/start; do
     echo "> docker run..."
     docker run --rm $(echo $run_opts) "${run_args[@]}" \
       --env PYTEST_LAUNCHER_VIRTUAL_ENV=1 \
+      --env UV_PROJECT_ENVIRONMENT=/tmp/venv \
+      --env PYTHONDONTWRITEBYTECODE=1 \
       $TTY_OPTS $image_id /bin/bash -lc "$launch_tests_cmd" \
       || failed+=("$env_name/$dockerfile")
     ran=$((ran+1))
