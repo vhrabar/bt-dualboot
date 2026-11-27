@@ -33,7 +33,9 @@ concurrency:
 
 env:
   PACKAGE: bt-dualboot-sync
-  PPA_SERIES: noble resolute stonking tenacious
+  # noble (24.04) is left out: its hatchling 1.21 and trove-classifiers are too old for
+  # this pyproject.toml (PEP 639 license fields, Python 3.14 classifier).
+  PPA_SERIES: resolute stonking tenacious
 
 jobs:
   version:
@@ -271,6 +273,7 @@ jobs:
           # did, so a rejected first upload made Launchpad reject all the others with
           # "Unable to find bt-dualboot-sync_X.orig.tar.gz".
           INCLUDE_ORIG: "yes"
+          NEW_VERSION_TEMPLATE: "{VERSION}-ppa{REVISION}~{SERIES}1"
           KEEP_CHANGELOG: "1"
           TARBALL: "https://github.com/${{ github.repository }}/archive/refs/tags/${{ needs.version.outputs.tag }}.tar.gz"
 

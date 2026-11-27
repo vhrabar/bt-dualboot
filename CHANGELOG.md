@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- The release is published to PyPI again; 0.1.4 never reached it. Its build failed because the source distribution included the test data, whose folder names contain `:` (they are named after Bluetooth MAC addresses), and current `uv` refuses to build from such an archive. The source distribution now holds only the package, the man page, the changelog and the README.
+
 ## [0.1.4] - 2026-11-27
 
 ### Changed
