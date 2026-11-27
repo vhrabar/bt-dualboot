@@ -81,6 +81,7 @@ for env_launcher in ./**/env_*/start; do
     flags=""
     require_image=""
     run_opts=$DEFAULT_RUN_OPTS
+    run_args=()
     opts_file="$env_dir/opts-$dockerfile"
     [ -e "$opts_file" ] && . $opts_file
 
@@ -139,8 +140,9 @@ for env_launcher in ./**/env_*/start; do
     echo " done ($image_id)"
 
     echo "| run_opts: $run_opts"
+    [ ${#run_args[@]} -ne 0 ] && echo "| run_args: ${run_args[*]}"
     echo "> docker run..."
-    docker run --rm $(echo $run_opts) \
+    docker run --rm $(echo $run_opts) "${run_args[@]}" \
       --env PYTEST_LAUNCHER_VIRTUAL_ENV=1 \
       $TTY_OPTS $image_id /bin/bash -lc "$launch_tests_cmd" \
       || failed+=("$env_name/$dockerfile")

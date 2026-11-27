@@ -1,0 +1,14 @@
+CONTEXT: [env_no_windows] chntpw installed, no Windows partition mounted
+RETCODE=0
+STDOUT:
+=======
+
+Windows locations:
+==================
+ No Windows partitions found
+
+-------------------------------------------------------------
+STDERR:
+=======
+
+-------------------------------------------------------------

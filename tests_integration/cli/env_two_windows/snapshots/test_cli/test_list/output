@@ -1,0 +1,11 @@
+CONTEXT: [env_two_windows] chntpw installed, two Windows partitions mounted
+RETCODE=1
+STDOUT:
+=======
+
+-------------------------------------------------------------
+STDERR:
+=======
+ERROR: 2 Windows locations found, use `--win MOUNT` to point actual Windows location
+
+-------------------------------------------------------------
