@@ -1,6 +1,6 @@
 [project]
 name = "bt-dualboot-sync"
-version = "0.1.4"
+version = "0.1.5"
 description = "Sync Bluetooth for dualboot Linux and Windows"
 readme = "bt_dualboot/README.md"
 license = "MIT"
@@ -68,6 +68,14 @@ addopts = "-m 'not manual and not bug'"
 
 [tool.hatch.build.targets.wheel]
 packages = ["bt_dualboot"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "bt_dualboot",
+    "packaging/bt-dualboot.1",
+    "CHANGELOG.md",
+    "README.md",
+]
 
 [build-system]
 requires = ["hatchling>=1.27"]
