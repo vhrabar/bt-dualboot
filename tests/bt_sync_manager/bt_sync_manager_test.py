@@ -17,7 +17,6 @@ SAMPLE_PUSH_MAC2 = "B8:94:A5:FD:F1:0A"
 
 # test currnetlz known bugs
 KNOWN_BUG_MACS = {
-    MAC_BLE_SYNCED_ZERO_EDIV_RAND,
     MAC_BLE_NO_WIN_PAIR
 }
 
@@ -47,6 +46,7 @@ class TestBtSyncManager__Initial:
             "B6:C2:D3:E5:F2:0D",
             "A4:80:1D:C5:4F:7E",
             MAC_BLE_SYNCED,
+            MAC_BLE_SYNCED_ZERO_EDIV_RAND,
         ]
 
         devices = sync_manager.devices_both_synced()
@@ -84,6 +84,7 @@ class TestBtSyncManager__AfterSync:
             "A4:80:1D:C5:4F:7E",
             "C2:9E:1D:E2:3D:A5",
             MAC_BLE_SYNCED,
+            MAC_BLE_SYNCED_ZERO_EDIV_RAND,
         ]
 
         devices = sync_manager.devices_both_synced()
@@ -156,28 +157,32 @@ class TestBtSyncManager__push:
         assert macs_of(sync_manager.devices_needs_sync()) == [MAC_NEED_SYNC_SAME_ADAPTER]
 
 
+class TestBluetoothDevice__synced:
+    LTK = "E25A7C3B9D02E25A7C3B9D02E25A7C3B"
+
+    def ble(self, ltk=LTK, ediv=0, rand=0):
+        return BluetoothDevice(mac=MAC_BLE_SYNCED_ZERO_EDIV_RAND, ltk=ltk, ediv=ediv, rand=rand)
+
+    def test_zero_ediv_rand_synced(self):
+        """#26: EDiv=0 / Rand=0 are valid LE Secure Connections values"""
+        assert self.ble().synced(self.ble()) is True
+
+    def test_zero_ediv_rand_differ(self):
+        assert self.ble().synced(self.ble(ediv=1)) is False
+        assert self.ble().synced(self.ble(rand=1)) is False
+        assert self.ble().synced(self.ble(ltk="00" * 16)) is False
+
+    def test_no_keys_returns_false(self):
+        """synced() must return a bool, not fall through to None"""
+        no_keys = BluetoothDevice(mac=MAC_BLE_SYNCED_ZERO_EDIV_RAND)
+        assert no_keys.synced(self.ble()) is False
+
+    def test_ltk_without_ediv_rand_returns_false(self):
+        assert self.ble(ediv=None, rand=None).synced(self.ble()) is False
 @mark.bug
 @patch("bt_dualboot.bt_linux.devices.LINUX_BT_DIR", bt_linux_sample_01_unwrapped())
 class TestBtSyncManager__KnownBugs:
-    """Regression tests for #26, #27. Run with `-m bug` (dev/start-tests-bug)"""
-
-    def test_ble_zero_ediv_rand_is_synced(self, sync_manager):
-        """#26: EDiv=0 / Rand=0 are valid LE Secure Connections values"""
-        both_synced_macs = [device.mac for device in sync_manager.devices_both_synced()]
-        needs_sync_macs = [device.mac for device in sync_manager.devices_needs_sync()]
-
-        assert MAC_BLE_SYNCED_ZERO_EDIV_RAND in both_synced_macs
-        assert MAC_BLE_SYNCED_ZERO_EDIV_RAND not in needs_sync_macs
-
-    def test_synced_returns_bool(self):
-        """#26: synced() must not fall through to None"""
-        ltk = "E25A7C3B9D02E25A7C3B9D02E25A7C3B"
-        linux = BluetoothDevice(mac=MAC_BLE_SYNCED_ZERO_EDIV_RAND, ltk=ltk, ediv=0, rand=0)
-        windows = BluetoothDevice(mac=MAC_BLE_SYNCED_ZERO_EDIV_RAND, ltk=ltk, ediv=0, rand=0)
-        no_keys = BluetoothDevice(mac=MAC_BLE_SYNCED_ZERO_EDIV_RAND)
-
-        assert linux.synced(windows) is True
-        assert no_keys.synced(windows) is False
+    """Regression tests for #27. Run with `-m bug` (dev/start-tests-bug)"""
 
     def test_ble_only_device_absent_windows(self, sync_manager):
         """#27: a BLE device with an LTK but no Windows pairing has to be paired in Windows"""
