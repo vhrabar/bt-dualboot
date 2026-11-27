@@ -1,7 +1,8 @@
-from pytest import fixture
+from pytest import fixture, raises
 from unittest.mock import patch
 from bt_dualboot.bt_sync_manager import BtSyncManager
 from bt_dualboot.bluetooth_device import BluetoothDevice
+from bt_dualboot.windows_registry import RegistryError
 
 # EXPERIMENTAL:
 # import windows_registry_test fixtures
@@ -195,3 +196,11 @@ class TestBluetoothDevice__has_any_key:
 
     def test_no_keys(self):
         assert BluetoothDevice().has_any_key() is False
+
+
+class TestBluetoothDevice__for_win_import:
+    def test_no_keys_raises_registry_error(self):
+        """building registry keys for a device without keys raises RegistryError"""
+        device = BluetoothDevice(mac=MAC_BLE_NO_WIN_PAIR, adapter_mac="A4:6B:6C:9D:E2:FB")
+        with raises(RegistryError, match="neither pairing key, nor long term key"):
+            device.for_win_import()

@@ -5,6 +5,7 @@ from bt_dualboot.bt_windows.convert import (
     hex_string_to_reg_value,
     mac_to_reg_key,
 )
+from bt_dualboot.windows_registry import RegistryError
 
 
 class BluetoothDevice:
@@ -69,7 +70,7 @@ class BluetoothDevice:
                 + "\\"
                 + mac_to_reg_key(self.mac)
             )
-        raise Exception(f"Missing pairing key or long term key for {self.adapter_mac}/{self.mac}")
+        raise RegistryError(f"Missing pairing key or long term key for {self.adapter_mac}/{self.mac}")
 
     def rand_to_erand(self):
         # hex(b) type -> 64 bit -> 8 byte in little endian
@@ -93,7 +94,7 @@ class BluetoothDevice:
                 '"ERand"': self.rand_to_erand(),
                 '"EDIV"': self.ediv_to_dword(),
             }
-        raise KeyError(f"Device {self.mac} has neither pairing key, nor long term key")
+        raise RegistryError(f"Device {self.mac} has neither pairing key, nor long term key")
 
     def synced(self, other):
         if self.pairing_key:
