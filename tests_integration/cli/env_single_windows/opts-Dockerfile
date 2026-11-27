@@ -1,1 +1,3 @@
 require_image="base"
+
+run_opts="$run_opts --mount type=bind,source=$PROJECT_DIR/tests_integration/cli/env_single_windows/win_readonly,target=/mnt/win-ro,readonly"
