@@ -7,6 +7,7 @@ from bt_dualboot.bluetooth_device import BluetoothDevice
 from bt_dualboot.bt_sync_manager import BtSyncManager
 from bt_dualboot.bt_sync_manager import bt_sync_manager as sync_module
 from bt_dualboot.cli import app, tools
+from bt_dualboot.windows_registry import RegistryError
 
 
 @pytest.mark.parametrize(
@@ -140,3 +141,47 @@ def test_commands_need_univocal_windows_location(mount_points, command, windows_
         app.main()
 
     assert "Windows locations found, use `--win MOUNT`" in str(exc_info.value.code)
+
+
+def run_sync_with_failing_import(monkeypatch, error):
+    mac = "AA:BB:CC:DD:EE:FF"
+    linux_device = BluetoothDevice(
+        mac=mac, adapter_mac="11:22:33:44:55:66", pairing_key="11" * 16, source="Linux"
+    )
+    windows_device = BluetoothDevice(
+        mac=mac, adapter_mac="11:22:33:44:55:66", pairing_key="22" * 16, source="Windows"
+    )
+    registry = Mock()
+    registry.import_dict.side_effect = error
+    manager = BtSyncManager(registry)
+    monkeypatch.setattr(sync_module, "get_linux_devices", lambda: [linux_device])
+    monkeypatch.setattr(sync_module, "get_windows_devices", lambda registry: [windows_device])
+    monkeypatch.setattr(app.Application, "_sync_manager", lambda self: manager)
+    monkeypatch.setattr(app, "require_chntpw_package", lambda: None)
+    argv = ["bt-dualboot", "--win", "/test/windows", "--sync", mac, "--no-backup"]
+    monkeypatch.setattr(sys, "argv", argv)
+    app.main()
+
+
+def test_registry_error_is_reported_without_traceback(monkeypatch, capsys):
+    """#31: no traceback, non-zero exit, "Nothing changed." and hints"""
+    monkeypatch.delenv("DEBUG", raising=False)
+    error = RegistryError("The Windows registry /test/windows/SYSTEM is read-only.")
+
+    with pytest.raises(SystemExit) as exc_info:
+        run_sync_with_failing_import(monkeypatch, error)
+
+    message = exc_info.value.code
+    assert isinstance(message, str), "SystemExit with a message exits with status 1"
+    assert message.startswith("ERROR: The Windows registry /test/windows/SYSTEM is read-only.\nNothing changed.")
+    assert "Fast Startup" in message
+    assert "DEBUG=1" in message
+    assert "successfully" not in capsys.readouterr().out
+
+
+def test_registry_error_keeps_traceback_with_debug(monkeypatch):
+    """#31: DEBUG=1 re-raises the original RegistryError"""
+    monkeypatch.setenv("DEBUG", "1")
+
+    with pytest.raises(RegistryError, match="read-only"):
+        run_sync_with_failing_import(monkeypatch, RegistryError("read-only"))

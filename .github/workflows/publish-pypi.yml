@@ -4,25 +4,50 @@ on:
   workflow_run:
     workflows: ["Build Release Distributions"]
     types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "ID of a successful 'Build Release Distributions' run triggered by a published release"
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 jobs:
   publish:
-    # Only for successful runs triggered by a published release.
+    # Only for successful runs triggered by a published release; a manual run is
+    # checked against the same rule in the first step.
     if: >
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'release'
+      github.event_name == 'workflow_dispatch' || (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'release'
+      )
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
       id-token: write
+      actions: read
     steps:
+      - name: Check the build run (manual runs)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.run_id }}
+        run: |
+          set -euo pipefail
+          IFS=$'\t' read -r name event conclusion branch < <(gh api "repos/${{ github.repository }}/actions/runs/${RUN_ID}" \
+            --jq '[.name, .event, .conclusion, .head_branch] | @tsv')
+          echo "run ${RUN_ID}: ${name} | event=${event} | conclusion=${conclusion} | ref=${branch}"
+          if [ "$name" != "Build Release Distributions" ] || [ "$event" != "release" ] || [ "$conclusion" != "success" ]; then
+            echo "::error::run ${RUN_ID} must be a successful 'Build Release Distributions' run triggered by a published release"
+            exit 1
+          fi
+
       - name: Download build artifacts
         uses: actions/download-artifact@v8
         with:
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ inputs.run_id || github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: dist
           pattern: dist

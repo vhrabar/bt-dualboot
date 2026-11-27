@@ -624,3 +624,59 @@ class TestSyncAll(BaseTestSync):
 
 class TestSyncAllDryRun(DryRunMixin, TestSyncAll):
     pass
+
+
+READONLY_WIN_MOUNT_POINT = os.path.join(os.sep, "mnt", "win-ro")
+# the same directory, read-write through the /src bind
+READONLY_WIN_SOURCE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "win_readonly")
+
+
+@mark.skipif(
+    not os.path.ismount(READONLY_WIN_MOUNT_POINT),
+    reason="needs the read-only /mnt/win-ro bind from opts-Dockerfile",
+)
+class TestReadOnlyHive:
+    """a read-only Windows partition (read-only mount, Fast Startup, hibernation)"""
+
+    @fixture(autouse=True)
+    def readonly_hive(self):
+        """Copy the prepared hive (devices imported) to where /mnt/win-ro shows it read-only"""
+        hive = os.path.join(READONLY_WIN_SOURCE, WINDOWS10_REGISTRY_PATH)
+        os.makedirs(os.path.dirname(hive), exist_ok=True)
+        shutil.copy(SYSTEM_REG, hive)
+        yield hive
+        shutil.rmtree(os.path.join(READONLY_WIN_SOURCE, "Windows"))
+
+    @fixture
+    def suite_snapshot(self, snapshot):
+        """Append class name to snapshot path"""
+        default_dir = snapshot.snapshot_dir
+        snapshot.snapshot_dir = default_dir.parent / self.__class__.__name__ / default_dir.parts[-1]
+        return snapshot
+
+    def opts(self, cmd_opts):
+        return ["--win", READONLY_WIN_MOUNT_POINT, *cmd_opts]
+
+    def test_list(self):
+        """reading still works"""
+        res = cli_result(self.opts(["-l", "--bot"]), sudo=True)
+        assert res["retcode"] == 0
+        assert set(filter_devices_macs(res["stdout"], "needs_sync")) == {MAC_NEED_SYNC_1, MAC_NEED_SYNC_2}
+
+    def test_sync(self, suite_snapshot, readonly_hive):
+        """should fail without a traceback, say nothing changed and leave the hive untouched"""
+        with open(readonly_hive, "rb") as f:
+            before = f.read()
+
+        cmd_opts = self.opts(["--sync", MAC_NEED_SYNC_2, "--no-backup"])
+        for res in snapshot_cli(suite_snapshot, cmd_opts, sudo=True):
+            retcode, stdout, stderr = itemgetter("retcode", "stdout", "stderr")(res)
+            assert "Traceback" not in stderr
+            assert "is read-only." in stderr
+            assert "Nothing changed." in stderr
+            assert "Fast Startup" in stderr
+            assert "successfully" not in stdout
+            assert retcode == 1
+
+        with open(readonly_hive, "rb") as f:
+            assert f.read() == before, "hive must stay unchanged"

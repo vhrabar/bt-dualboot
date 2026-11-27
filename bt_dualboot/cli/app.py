@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from bt_dualboot.__meta__ import APP_NAME, __version__
 from bt_dualboot.bt_sync_manager import BtSyncManager, DeviceNotFoundError
 from bt_dualboot.win_mount import locate_windows_mount_points
-from bt_dualboot.windows_registry import WindowsRegistry
+from bt_dualboot.windows_registry import RegistryError, WindowsRegistry
 
 from .tools import (
     is_debug,
@@ -92,6 +92,26 @@ def no_device_error_handler():
     except DeviceNotFoundError as err:
         message = err.args[0]
         raise SystemExit(f"ERROR: {message}\nNothing changed.") from err
+
+
+REGISTRY_ERROR_HINTS = """
+Possible causes:
+  - the Windows partition is mounted read-only: remount it read-write
+  - Windows Fast Startup or hibernation is on, so Linux mounts the partition read-only:
+    turn off Fast Startup in Windows and shut Windows down fully (not restart)
+
+Run with DEBUG=1 to see the reged output and the traceback."""
+
+
+@contextmanager
+def registry_error_handler():
+    """Report RegistryError as a readable message; with DEBUG=1 keep the traceback"""
+    try:
+        yield
+    except RegistryError as err:
+        if is_debug():
+            raise
+        raise SystemExit(f"ERROR: {err}\nNothing changed.\n{REGISTRY_ERROR_HINTS}") from err
 
 
 class Application:
@@ -367,4 +387,5 @@ def main():
     require_chntpw_package()
 
     app = Application(opts)
-    app.run()
+    with registry_error_handler():
+        app.run()
