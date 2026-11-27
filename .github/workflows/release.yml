@@ -12,6 +12,8 @@ on:
     branches: [main]
     paths:
       - 'pyproject.toml'
+  # Re-run by hand (always on main): skipped when pyproject.toml's version is already tagged.
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -86,6 +88,12 @@ jobs:
         if: steps.gate.outputs.skip != 'true'
         run: python3 dev/pre-release/update-version
 
+      - name: Render the packaging for ${{ steps.version.outputs.version }}
+        if: steps.gate.outputs.skip != 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: bash packaging/set-package-version.sh "$VERSION"
+
       - name: Commit and tag
         if: steps.gate.outputs.skip != 'true'
         id: commit
@@ -99,7 +107,9 @@ jobs:
           # Not pyproject.toml: it is already correct from the merge that triggered
           # this run, and this push must not touch it, or the path filter above would
           # re-trigger this workflow on the commit below.
-          git add CHANGELOG.md bt_dualboot/__meta__.py
+          git add CHANGELOG.md bt_dualboot/__meta__.py \
+            packaging/bt-dualboot.1 packaging/copr/bt-dualboot-sync.spec \
+            packaging/aur/PKGBUILD packaging/aur/.SRCINFO
           if git diff --cached --quiet; then
             echo "::error::Nothing changed; is CHANGELOG.md already at ${VERSION}?"
             exit 1
