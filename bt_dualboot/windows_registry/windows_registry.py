@@ -139,7 +139,8 @@ class WindowsRegistry:
           (ConfigParser): parsed instance
         """
 
-        reg_data = ConfigParser()
+        # registry values are literal: `%` in a value is not an interpolation
+        reg_data = ConfigParser(interpolation=None)
         reg_data.read_string(self.export(reg_key))
         return reg_data
 

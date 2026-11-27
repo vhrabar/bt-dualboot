@@ -62,6 +62,14 @@ class TestImport:
         key = wp(r"ControlSet001\Control\Bluetooth\Audio\Hfp\HandsFree\Sub")
         assert reg_data.get(key, '"CustomSub"') == "dword:00000121", "new section added"
 
+    def test_export_as_config_percent_value(self, windows_registry):
+        """`%` in a registry value is literal, not ConfigParser interpolation"""
+        key = wp(r"ControlSet001\Control\Bluetooth\Audio\Hfp\HandsFree")
+        windows_registry.import_dict({key: {'"Name"': '"JBL 100% Bass"'}}, safe=False)
+
+        reg_data = windows_registry.export_as_config(self.sample_reg_key)
+        assert reg_data.get(key, '"Name"') == '"JBL 100% Bass"'
+
     def test_import_safe(self, windows_registry, sample_reg_file_path, registry_file_path):
         new_value = "dword:00000207"
         for_import = {

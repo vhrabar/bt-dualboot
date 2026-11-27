@@ -63,6 +63,8 @@ class TestBtSyncManager__Initial:
             "D1:8A:4E:71:5D:C1",
             "C4:72:B3:6F:82:42",
             MAC_BLE_NO_WIN_PAIR,
+            MAC_NAME_WITH_PERCENT,
+            MAC_NO_NAME,
         ]
 
         devices = sync_manager.devices_absent_windows()
@@ -104,6 +106,8 @@ class TestBtSyncManager__AfterSync:
             "D1:8A:4E:71:5D:C1",
             "C4:72:B3:6F:82:42",
             MAC_BLE_NO_WIN_PAIR,
+            MAC_NAME_WITH_PERCENT,
+            MAC_NO_NAME,
         ]
 
         devices = sync_manager.devices_absent_windows()
