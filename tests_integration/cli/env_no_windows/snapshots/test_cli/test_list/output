@@ -1,0 +1,11 @@
+CONTEXT: [env_no_windows] chntpw installed, no Windows partition mounted
+RETCODE=1
+STDOUT:
+=======
+
+-------------------------------------------------------------
+STDERR:
+=======
+ERROR: None Windows locations found, use `--win MOUNT` to point actual Windows location
+
+-------------------------------------------------------------

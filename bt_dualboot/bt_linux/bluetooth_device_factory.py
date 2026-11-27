@@ -31,7 +31,8 @@ def extract_info(device_info_path):
     Returns:
         hash: Kind of { name:, class:, pairing_key: , long_term_key:, ediv:, rand:}
     """
-    config = ConfigParser()
+    # BlueZ values are literal: `%` in a device name is not an interpolation
+    config = ConfigParser(interpolation=None)
     config.read(device_info_path)
     link_key = config.get("LinkKey", "Key", fallback=None)
     long_term_key = config.get("LongTermKey", "Key", fallback=None)
@@ -40,7 +41,9 @@ def extract_info(device_info_path):
 
     # fmt: off
     return {
-        "name":         config.get("General", "Name"),
+        "name":         config.get("General", "Name", fallback=None)
+                        or config.get("General", "Alias", fallback=None)
+                        or extract_macs(device_info_path)["device_mac"],
         "class":        config.get("General", "Class", fallback=None),
         "pairing_key":  link_key,
         "long_term_key": long_term_key,

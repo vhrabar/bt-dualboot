@@ -1,0 +1,15 @@
+CONTEXT: [env_two_windows] chntpw installed, two Windows partitions mounted
+RETCODE=0
+STDOUT:
+=======
+
+Windows locations:
+==================
+ /mnt/windows11
+ /media/user/Windows Drive
+
+-------------------------------------------------------------
+STDERR:
+=======
+
+-------------------------------------------------------------

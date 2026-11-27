@@ -33,6 +33,8 @@ class TestDevices:
             "B4:6B:6C:9D:E2:FB/A4:80:1D:C5:4F:7E",
             "B4:6B:6C:9D:E2:FB/B8:94:A5:FD:F1:0A",
             "B4:6B:6C:9D:E2:FB/C4:72:B3:6F:82:42",
+            "B4:6B:6C:9D:E2:FB/C6:25:25:4A:42:4C",
+            "B4:6B:6C:9D:E2:FB/C7:4E:4F:4E:41:4D",
         ]
 
         expected = [
@@ -55,6 +57,8 @@ class TestDevices:
             "E1:5A:7C:3B:9D:01",
             "E2:5A:7C:3B:9D:02",
             "E3:5A:7C:3B:9D:03",
+            "C6:25:25:4A:42:4C",
+            "C7:4E:4F:4E:41:4D",
         ]
         actual_macs = [device.mac for device in get_devices()]
         assert sorted(actual_macs) == sorted(expected_macs)

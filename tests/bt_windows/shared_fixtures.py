@@ -56,6 +56,10 @@ Initializes and chekcs following test set.
 
             1 BLE not paired in Windows (#27)
                 E3:5A:7C:3B:9D:03
+
+        B (B4:6B:6C:9D:E2:FB), Linux only, not paired in Windows (#30):
+            C6:25:25:4A:42:4C   Name contains `%`
+            C7:4E:4F:4E:41:4D   no Name, only Alias
 """
 
 # same adapter as MAC_NEED_SYNC_2
@@ -63,6 +67,10 @@ MAC_NEED_SYNC_SAME_ADAPTER = "C5:9E:1D:E2:3D:A6"
 MAC_BLE_SYNCED = "E1:5A:7C:3B:9D:01"
 MAC_BLE_SYNCED_ZERO_EDIV_RAND = "E2:5A:7C:3B:9D:02"
 MAC_BLE_NO_WIN_PAIR = "E3:5A:7C:3B:9D:03"
+
+# Linux only (absent in Windows), on adapter B4:6B:6C:9D:E2:FB (#30)
+MAC_NAME_WITH_PERCENT = "C6:25:25:4A:42:4C"  # Name=JBL 100% Bass
+MAC_NO_NAME = "C7:4E:4F:4E:41:4D"  # no Name, only Alias
 
 # valid for --sync*
 MAC_NEED_SYNC_1 = "B8:94:A5:FD:F1:0A"

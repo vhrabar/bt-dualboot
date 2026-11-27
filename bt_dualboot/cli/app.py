@@ -183,8 +183,25 @@ class Application:
     def list_win_mounts(self):
         print_header("Windows locations:")
 
-        for mount_point in locate_windows_mount_points():
+        mount_points = locate_windows_mount_points()
+        if len(mount_points) == 0:
+            print(" No Windows partitions found")
+
+        for mount_point in mount_points:
             print(" " + mount_point)
+
+    def _needs_windows_location(self):
+        """
+        Returns:
+            bool: whether the given options work on a single Windows location
+                (`--list-win-mounts` alone doesn't: it lists all of them)
+        """
+        return (
+            self.opts.list
+            or self.opts.sync is not None
+            or self.opts.sync_all
+            or _opt_backup(self.opts.backup) is not None
+        )
 
     def list_devices(self):
         sync_manager = self._sync_manager()
@@ -273,7 +290,8 @@ class Application:
                 print("...done")
 
     def run(self):
-        require_univocal_windows_location(user_selected_location=self._opts_win_mount_point())
+        if self._needs_windows_location():
+            require_univocal_windows_location(user_selected_location=self._opts_win_mount_point())
 
         if self.opts.list_win_mounts:
             self.list_win_mounts()
