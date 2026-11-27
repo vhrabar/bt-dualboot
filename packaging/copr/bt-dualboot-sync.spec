@@ -3,7 +3,7 @@
 %global forgeurl https://github.com/vhrabar/bt-dualboot
 %global srcname  bt-dualboot
 
-%{!?pkg_version:%global pkg_version 0.1.4}
+%{!?pkg_version:%global pkg_version 0.1.5}
 
 Name:           bt-dualboot-sync
 Version:        %{pkg_version}
@@ -56,6 +56,14 @@ install -Dpm 0644 packaging/bt-dualboot.1 %{buildroot}%{_mandir}/man1/bt-dualboo
 %{_mandir}/man1/bt-dualboot.1*
 
 %changelog
+* Fri Nov 27 2026 Vedran Hrabar <vedran.hrabar@outlook.com> - 0.1.5-1
+- Fixed: The release is published to PyPI again; 0.1.4 never reached it. Its
+  build failed because the source distribution included the test data, whose
+  folder names contain `:` (they are named after Bluetooth MAC addresses),
+  and current `uv` refuses to build from such an archive. The source
+  distribution now holds only the package, the man page, the changelog and
+  the README.
+
 * Fri Nov 27 2026 Vedran Hrabar <vedran.hrabar@outlook.com> - 0.1.4-1
 - Changed: Devices are listed in a stable order (sorted by adapter and
   device MAC) by `-l` and `--sync-all`, instead of the order the filesystem
