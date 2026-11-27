@@ -140,14 +140,14 @@ class BtSyncManager:
         !uses cached
 
         Returns:
-            list<BluetoothDevice>: which only exist in Linux and have a pairing key
+            list<BluetoothDevice>: which only exist in Linux and have a pairing key or a long term key
         """
 
         index = self._index_devices()
         single_linux_devices = [
             devices[0]
             for mac, devices in index.items()
-            if len(devices) == 1 and devices[0].is_source_linux() and devices[0].has_pairing_key()
+            if len(devices) == 1 and devices[0].is_source_linux() and devices[0].has_any_key()
         ]
         return single_linux_devices
 
@@ -156,14 +156,14 @@ class BtSyncManager:
         !uses cached
 
         Returns:
-            list<BluetoothDevice>: which only exist in Linux but have no pairing key
+            list<BluetoothDevice>: which only exist in Linux but have neither a pairing key nor a long term key
         """
 
         index = self._index_devices()
         no_key_devices = [
             devices[0]
             for mac, devices in index.items()
-            if len(devices) == 1 and devices[0].is_source_linux() and not devices[0].has_pairing_key()
+            if len(devices) == 1 and devices[0].is_source_linux() and not devices[0].has_any_key()
         ]
         return no_key_devices
 
@@ -202,7 +202,7 @@ class BtSyncManager:
         for_import = {}
         for device in devices:
             sec_key, value = device.for_win_import()
-            for_import[sec_key] = value
+            for_import.setdefault(sec_key, {}).update(value)
 
         self.windows_registry.import_dict(for_import)
 

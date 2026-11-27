@@ -17,7 +17,7 @@ class BluetoothDevice:
         pairing_key (str)
         ltk (str)
         rand (int)
-        edir (int)
+        ediv (int)
         adapter_mac (str)
         source (str): kind of 'Windows', 'Linux'
 
@@ -98,8 +98,10 @@ class BluetoothDevice:
     def synced(self, other):
         if self.pairing_key:
             return self.pairing_key == other.pairing_key
-        if self.ltk and self.rand and self.ediv:
+        # EDiv=0 / Rand=0 are valid: BlueZ stores them for LE Secure Connections
+        if self.ltk and self.rand is not None and self.ediv is not None:
             return self.ltk == other.ltk and self.rand == other.rand and self.ediv == other.ediv
+        return False
 
     @classmethod
     def source_linux(cls):
@@ -117,3 +119,7 @@ class BluetoothDevice:
 
     def has_pairing_key(self):
         return self.pairing_key is not None
+
+    def has_any_key(self):
+        """True when the device has a classic LinkKey or a BLE LongTermKey"""
+        return self.pairing_key is not None or self.ltk is not None

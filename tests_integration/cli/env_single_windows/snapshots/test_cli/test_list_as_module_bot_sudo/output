@@ -7,7 +7,11 @@ works B6:C2:D3:E5:F2:0D DEV-1-02-Name
 works A4:80:1D:C5:4F:7E DEV-2-01-Name
 needs_sync C2:9E:1D:E2:3D:A5 DEV-1-03-Name
 needs_sync B8:94:A5:FD:F1:0A DEV-2-02-Name
+missing_win C5:9E:1D:E2:3D:A6 DEV-1-05-Name
 missing_win D1:8A:4E:71:5D:C1 DEV-1-04-Name
+missing_win E1:5A:7C:3B:9D:01 DEV-1-06-Name
+missing_win E2:5A:7C:3B:9D:02 DEV-1-07-Name
+missing_win E3:5A:7C:3B:9D:03 DEV-1-08-Name
 missing_win C4:72:B3:6F:82:42 DEV-2-03-Name
 missing_paring_key 22:94:90:56:EE:38 DEV-1-02-Name
 
